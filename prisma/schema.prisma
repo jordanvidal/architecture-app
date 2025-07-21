@@ -1,0 +1,425 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email         String    @unique
+  password      String
+  firstName     String?   @map("first_name")
+  lastName      String?   @map("last_name")
+  role          Role      @default(CLIENT)
+  avatarUrl     String?   @map("avatar_url")
+  phone         String?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  lastLoginAt   DateTime? @map("last_login_at")
+  isActive      Boolean   @default(true) @map("is_active")
+
+  // Relations
+  createdProjects Project[] @relation("ProjectCreator")
+  projectUsers  ProjectUser[]
+  prescriptions Prescription[]
+  files         File[]
+  budgetLines   BudgetLine[]
+  commentThreads CommentThread[]
+  comments      Comment[]
+  notifications Notification[]
+  activityLogs  ActivityLog[]
+  resourcesCreated ResourceLibrary[] @relation("ResourceCreator")
+
+  @@map("users")
+}
+
+model Project {
+  id                  String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                String
+  description         String?
+  clientName          String      @map("client_name")
+  clientEmail         String?     @map("client_email")
+  clientPhone         String?     @map("client_phone")
+  address             String?     // Gardé pour compatibilité
+  imageUrl            String?     @map("image_url") // NOUVEAU : visuel du projet
+  status              ProjectStatus @default(PRESCRIPTION)
+  budgetTotal         Decimal?    @map("budget_total") @db.Decimal(12,2)
+  budgetSpent         Decimal     @default(0) @map("budget_spent") @db.Decimal(12,2)
+  progressPercentage  Int         @default(0) @map("progress_percentage")
+  startDate           DateTime?   @map("start_date") @db.Date
+  endDate             DateTime?   @map("end_date") @db.Date
+  createdAt           DateTime    @default(now()) @map("created_at")
+  updatedAt           DateTime    @updatedAt @map("updated_at")
+  createdBy           String      @map("created_by") @db.Uuid
+
+  // Relations existantes
+  creator       User @relation("ProjectCreator", fields: [createdBy], references: [id])
+  projectUsers  ProjectUser[]
+  spaces        Space[]
+  prescriptions Prescription[]
+  files         File[]
+  budgetLines   BudgetLine[]
+  commentThreads CommentThread[]
+  notifications Notification[]
+  activityLogs  ActivityLog[]
+
+  // NOUVELLES relations pour les adresses
+  deliveryAddress DeliveryAddress?
+  billingAddresses BillingAddress[]
+
+  @@map("projects")
+}
+
+// NOUVEAU : Adresse de livraison détaillée
+model DeliveryAddress {
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId   String @unique @map("project_id") @db.Uuid
+  
+  // Informations de livraison
+  contactName String @map("contact_name")
+  company     String?
+  address     String
+  city        String
+  zipCode     String @map("zip_code")
+  country     String @default("France")
+  
+  // Accès et instructions
+  accessCode  String? @map("access_code")
+  floor       String?
+  doorCode    String? @map("door_code")
+  instructions String? // Instructions spéciales de livraison
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("delivery_addresses")
+}
+
+// NOUVEAU : Adresses de facturation multiples
+model BillingAddress {
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId String @map("project_id") @db.Uuid
+  
+  // Informations de facturation
+  isDefault Boolean @default(false) @map("is_default")
+  name      String // Nom ou raison sociale
+  company   String?
+  address   String
+  city      String
+  zipCode   String @map("zip_code")
+  country   String @default("France")
+  
+  // Informations fiscales
+  vatNumber String? @map("vat_number")
+  siret     String?
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("billing_addresses")
+}
+
+// NOUVEAU : Bibliothèque de ressources
+model ResourceLibrary {
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  
+  // Informations de base
+  name        String
+  description String?
+  categoryId  String @map("category_id") @db.Uuid
+  
+  // Détails produit
+  brand       String?
+  reference   String?
+  productUrl  String? @map("product_url")
+  
+  // Prix et disponibilité
+  priceMin    Decimal? @map("price_min") @db.Decimal(10,2)
+  priceMax    Decimal? @map("price_max") @db.Decimal(10,2)
+  supplier    String?
+  availability String?
+  
+  // Médias
+  imageUrl    String? @map("image_url")
+  
+  // Métadonnées
+  tags        String[]
+  isPublic    Boolean @default(true) @map("is_public")
+  isFavorite  Boolean @default(false) @map("is_favorite")
+  
+  // Traçabilité
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdBy   String   @map("created_by") @db.Uuid
+
+  // Relations
+  category PrescriptionCategory @relation(fields: [categoryId], references: [id])
+  creator  User @relation("ResourceCreator", fields: [createdBy], references: [id])
+
+  @@map("resource_library")
+}
+
+model ProjectUser {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId String   @map("project_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  role      ProjectRole
+  createdAt DateTime @default(now()) @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@map("project_users")
+}
+
+model Space {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId   String    @map("project_id") @db.Uuid
+  name        String
+  type        SpaceType?
+  description String?
+  surfaceM2   Decimal?  @map("surface_m2") @db.Decimal(8,2)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  project       Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  prescriptions Prescription[]
+
+  @@map("spaces")
+}
+
+model PrescriptionCategory {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @unique
+  description String?
+  colorHex    String?  @map("color_hex")
+  icon        String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  prescriptions Prescription[]
+  budgetLines   BudgetLine[]
+  resources     ResourceLibrary[] // NOUVEAU
+
+  @@map("prescription_categories")
+}
+
+model Prescription {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId   String   @map("project_id") @db.Uuid
+  spaceId     String   @map("space_id") @db.Uuid
+  categoryId  String   @map("category_id") @db.Uuid
+  
+  // Informations générales
+  name        String
+  description String?
+  
+  // Détails produit
+  brand       String?
+  reference   String?
+  productUrl  String?  @map("product_url")
+  
+  // Logistique et prix
+  quantity    Int      @default(1)
+  unitPrice   Decimal? @map("unit_price") @db.Decimal(10,2)
+  totalPrice  Decimal? @map("total_price") @db.Decimal(10,2)
+  supplier    String?
+  
+  // Statut et suivi
+  status      PrescriptionStatus @default(EN_COURS)
+  validatedAt DateTime? @map("validated_at")
+  orderedAt   DateTime? @map("ordered_at")
+  deliveredAt DateTime? @map("delivered_at")
+  
+  // Commentaires et notes
+  notes       String?
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdBy   String   @map("created_by") @db.Uuid
+
+  project  Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  space    Space                @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  category PrescriptionCategory @relation(fields: [categoryId], references: [id])
+  creator  User                 @relation(fields: [createdBy], references: [id])
+  files    File[]
+
+  @@map("prescriptions")
+}
+
+model File {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId      String   @map("project_id") @db.Uuid
+  prescriptionId String?  @map("prescription_id") @db.Uuid
+  originalName   String   @map("original_name")
+  storedName     String   @map("stored_name")
+  filePath       String   @map("file_path")
+  fileSizeBytes  BigInt   @map("file_size_bytes")
+  mimeType       String   @map("mime_type")
+  title          String?
+  description    String?
+  uploadedBy     String   @map("uploaded_by") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  project      Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  prescription Prescription? @relation(fields: [prescriptionId], references: [id], onDelete: SetNull)
+  uploader     User          @relation(fields: [uploadedBy], references: [id])
+
+  @@map("files")
+}
+
+model BudgetLine {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId      String   @map("project_id") @db.Uuid
+  categoryId     String   @map("category_id") @db.Uuid
+  name           String
+  description    String?
+  budgetedAmount Decimal  @default(0) @map("budgeted_amount") @db.Decimal(10,2)
+  actualAmount   Decimal  @default(0) @map("actual_amount") @db.Decimal(10,2)
+  status         BudgetStatus @default(DRAFT)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  createdBy      String   @map("created_by") @db.Uuid
+
+  project  Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  category PrescriptionCategory @relation(fields: [categoryId], references: [id])
+  creator  User                 @relation(fields: [createdBy], references: [id])
+
+  @@map("budget_lines")
+}
+
+model CommentThread {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId   String   @map("project_id") @db.Uuid
+  title       String
+  description String?
+  isPinned    Boolean  @default(false) @map("is_pinned")
+  isArchived  Boolean  @default(false) @map("is_archived")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdBy   String   @map("created_by") @db.Uuid
+
+  project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  creator  User      @relation(fields: [createdBy], references: [id])
+  comments Comment[]
+
+  @@map("comment_threads")
+}
+
+model Comment {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  threadId    String   @map("thread_id") @db.Uuid
+  parentId    String?  @map("parent_id") @db.Uuid
+  content     String
+  contentHtml String?  @map("content_html")
+  isEdited    Boolean  @default(false) @map("is_edited")
+  editedAt    DateTime? @map("edited_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  createdBy   String   @map("created_by") @db.Uuid
+
+  thread   CommentThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  parent   Comment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  Comment[]     @relation("CommentReplies")
+  creator  User          @relation(fields: [createdBy], references: [id])
+
+  @@map("comments")
+}
+
+model Notification {
+  id        String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  projectId String?          @map("project_id") @db.Uuid
+  type      NotificationType
+  title     String
+  message   String?
+  data      Json?
+  readAt    DateTime?        @map("read_at")
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model ActivityLog {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String?   @map("user_id") @db.Uuid
+  projectId  String?   @map("project_id") @db.Uuid
+  action     String
+  entityType String    @map("entity_type")
+  entityId   String?   @map("entity_id") @db.Uuid
+  details    Json?
+  ipAddress  String?   @map("ip_address")
+  userAgent  String?   @map("user_agent")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("activity_logs")
+}
+
+// Enums
+enum Role {
+  AGENCY
+  CLIENT
+  ADMIN
+}
+
+enum ProjectStatus {
+  CONCEPTION
+  PRESCRIPTION
+  CHANTIER
+  LIVRAISON
+  TERMINE
+  ANNULE
+}
+
+enum ProjectRole {
+  OWNER
+  COLLABORATOR
+  VIEWER
+}
+
+enum SpaceType {
+  SALON
+  CUISINE
+  CHAMBRE
+  SDB
+  ENTREE
+  BUREAU
+  DRESSING
+  AUTRE
+}
+
+enum PrescriptionStatus {
+  EN_COURS
+  VALIDE
+  COMMANDE
+  LIVRE
+  ANNULE
+}
+
+enum BudgetStatus {
+  DRAFT
+  ACTIVE
+  COMPLETE
+  OVER_BUDGET
+}
+
+enum NotificationType {
+  COMMENT
+  PRESCRIPTION
+  FILE
+  BUDGET
+  PROJECT_UPDATE
+}
