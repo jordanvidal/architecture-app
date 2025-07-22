@@ -81,6 +81,8 @@ export default function ProjectsPage() {
     }
   }
 
+  // Status badge supprimé - on se concentre sur la prescription
+
   if (status === 'loading' || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
