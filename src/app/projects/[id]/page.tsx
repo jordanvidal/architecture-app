@@ -91,6 +91,9 @@ export default function ProjectDetailPage() {
   const [selectedPrescription, setSelectedPrescription] = useState<Prescription | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>('ALL')
+  const [comments, setComments] = useState<any[]>([])
+  const [newComment, setNewComment] = useState('')
+  const [commentsLoading, setCommentsLoading] = useState(false)
 
   useEffect(() => {
     if (params.id) {
@@ -136,6 +139,49 @@ export default function ProjectDetailPage() {
     if (statusFilter === 'ALL') return true
     return prescription.status === statusFilter
   })
+
+  // Fonctions pour les commentaires
+  const fetchComments = async (prescriptionId: string) => {
+    try {
+      setCommentsLoading(true)
+      const response = await fetch(`/api/prescriptions/${prescriptionId}/comments`)
+      if (response.ok) {
+        const data = await response.json()
+        setComments(data)
+      }
+    } catch (error) {
+      console.error('Erreur comments:', error)
+    } finally {
+      setCommentsLoading(false)
+    }
+  }
+
+  const addComment = async () => {
+    if (!selectedPrescription || !newComment.trim()) return
+
+    try {
+      const response = await fetch(`/api/prescriptions/${selectedPrescription.id}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: newComment.trim() })
+      })
+
+      if (response.ok) {
+        const newCommentData = await response.json()
+        setComments(prev => [...prev, newCommentData])
+        setNewComment('')
+      }
+    } catch (error) {
+      console.error('Erreur ajout comment:', error)
+    }
+  }
+
+  const openModal = (prescription: Prescription) => {
+    setSelectedPrescription(prescription)
+    setModalOpen(true)
+    setComments([])
+    fetchComments(prescription.id)
+  }
 
   // Focus sur les prescriptions - statuts projet supprimés
 
@@ -474,10 +520,7 @@ export default function ProjectDetailPage() {
                     <div
                       key={prescription.id}
                       className="bg-white rounded-lg border border-slate-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
-                      onClick={() => {
-                        setSelectedPrescription(prescription)
-                        setModalOpen(true)
-                      }}
+                      onClick={() => openModal(prescription)}
                     >
                       <div className="flex justify-between items-start mb-4">
                         <div className="flex-1">
@@ -748,30 +791,64 @@ export default function ProjectDetailPage() {
 
               {/* Section commentaires */}
               <div className="border-t border-slate-200 pt-6">
-                <h3 className="text-lg font-semibold text-slate-900 mb-4">💬 Commentaires</h3>
+                <h3 className="text-lg font-semibold text-slate-900 mb-4">
+                  💬 Commentaires ({comments.length})
+                </h3>
                 
                 {/* Zone de nouveau commentaire */}
                 <div className="mb-6">
                   <textarea
-                    placeholder="Ajouter un commentaire..."
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Ajouter un commentaire sur cette prescription..."
                     rows={3}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent resize-none"
                   />
                   <div className="flex justify-end mt-2">
-                    <button className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors">
+                    <button 
+                      onClick={addComment}
+                      disabled={!newComment.trim()}
+                      className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
                       Publier
                     </button>
                   </div>
                 </div>
 
-                {/* Liste des commentaires (placeholder) */}
+                {/* Liste des commentaires */}
                 <div className="space-y-4">
-                  <div className="text-center py-8 text-slate-500">
-                    <span className="text-4xl mb-2 block">💬</span>
-                    Aucun commentaire pour le moment.
-                    <br />
-                    Soyez le premier à commenter cette prescription !
-                  </div>
+                  {commentsLoading ? (
+                    <div className="text-center py-4">
+                      <div className="w-6 h-6 border-2 border-slate-800 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                      <p className="text-slate-500 text-sm">Chargement des commentaires...</p>
+                    </div>
+                  ) : comments.length === 0 ? (
+                    <div className="text-center py-8 text-slate-500">
+                      <span className="text-4xl mb-2 block">💬</span>
+                      Aucun commentaire pour le moment.
+                      <br />
+                      Soyez le premier à commenter cette prescription !
+                    </div>
+                  ) : (
+                    comments.map((comment) => (
+                      <div key={comment.id} className="bg-slate-50 rounded-lg p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="font-medium text-slate-900">
+                            {comment.creator.firstName} {comment.creator.lastName}
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            {new Date(comment.createdAt).toLocaleDateString('fr-FR', {
+                              day: 'numeric',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </div>
+                        </div>
+                        <p className="text-slate-700">{comment.content}</p>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>

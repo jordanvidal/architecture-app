@@ -32,6 +32,7 @@ model User {
   notifications Notification[]
   activityLogs  ActivityLog[]
   resourcesCreated ResourceLibrary[] @relation("ResourceCreator")
+  prescriptionComments PrescriptionComment[] @relation("PrescriptionCommentCreator")
 
   @@map("users")
 }
@@ -44,7 +45,7 @@ model Project {
   clientEmail         String?     @map("client_email")
   clientPhone         String?     @map("client_phone")
   address             String?     // Gardé pour compatibilité
-  imageUrl            String?     @map("image_url") // NOUVEAU : visuel du projet
+  imageUrl            String?     @map("image_url")
   status              ProjectStatus @default(PRESCRIPTION)
   budgetTotal         Decimal?    @map("budget_total") @db.Decimal(12,2)
   budgetSpent         Decimal     @default(0) @map("budget_spent") @db.Decimal(12,2)
@@ -55,7 +56,7 @@ model Project {
   updatedAt           DateTime    @updatedAt @map("updated_at")
   createdBy           String      @map("created_by") @db.Uuid
 
-  // Relations existantes
+  // Relations
   creator       User @relation("ProjectCreator", fields: [createdBy], references: [id])
   projectUsers  ProjectUser[]
   spaces        Space[]
@@ -65,20 +66,16 @@ model Project {
   commentThreads CommentThread[]
   notifications Notification[]
   activityLogs  ActivityLog[]
-
-  // NOUVELLES relations pour les adresses
   deliveryAddress DeliveryAddress?
   billingAddresses BillingAddress[]
 
   @@map("projects")
 }
 
-// NOUVEAU : Adresse de livraison détaillée
 model DeliveryAddress {
   id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   projectId   String @unique @map("project_id") @db.Uuid
   
-  // Informations de livraison
   contactName String @map("contact_name")
   company     String?
   address     String
@@ -86,11 +83,10 @@ model DeliveryAddress {
   zipCode     String @map("zip_code")
   country     String @default("France")
   
-  // Accès et instructions
   accessCode  String? @map("access_code")
   floor       String?
   doorCode    String? @map("door_code")
-  instructions String? // Instructions spéciales de livraison
+  instructions String?
   
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
@@ -100,21 +96,18 @@ model DeliveryAddress {
   @@map("delivery_addresses")
 }
 
-// NOUVEAU : Adresses de facturation multiples
 model BillingAddress {
   id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   projectId String @map("project_id") @db.Uuid
   
-  // Informations de facturation
   isDefault Boolean @default(false) @map("is_default")
-  name      String // Nom ou raison sociale
+  name      String
   company   String?
   address   String
   city      String
   zipCode   String @map("zip_code")
   country   String @default("France")
   
-  // Informations fiscales
   vatNumber String? @map("vat_number")
   siret     String?
   
@@ -126,40 +119,32 @@ model BillingAddress {
   @@map("billing_addresses")
 }
 
-// NOUVEAU : Bibliothèque de ressources
 model ResourceLibrary {
   id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   
-  // Informations de base
   name        String
   description String?
   categoryId  String @map("category_id") @db.Uuid
   
-  // Détails produit
   brand       String?
   reference   String?
   productUrl  String? @map("product_url")
   
-  // Prix et disponibilité
   priceMin    Decimal? @map("price_min") @db.Decimal(10,2)
   priceMax    Decimal? @map("price_max") @db.Decimal(10,2)
   supplier    String?
   availability String?
   
-  // Médias
   imageUrl    String? @map("image_url")
   
-  // Métadonnées
   tags        String[]
   isPublic    Boolean @default(true) @map("is_public")
   isFavorite  Boolean @default(false) @map("is_favorite")
   
-  // Traçabilité
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
   createdBy   String   @map("created_by") @db.Uuid
 
-  // Relations
   category PrescriptionCategory @relation(fields: [categoryId], references: [id])
   creator  User @relation("ResourceCreator", fields: [createdBy], references: [id])
 
@@ -206,7 +191,7 @@ model PrescriptionCategory {
 
   prescriptions Prescription[]
   budgetLines   BudgetLine[]
-  resources     ResourceLibrary[] // NOUVEAU
+  resources     ResourceLibrary[]
 
   @@map("prescription_categories")
 }
@@ -217,28 +202,23 @@ model Prescription {
   spaceId     String   @map("space_id") @db.Uuid
   categoryId  String   @map("category_id") @db.Uuid
   
-  // Informations générales
   name        String
   description String?
   
-  // Détails produit
   brand       String?
   reference   String?
   productUrl  String?  @map("product_url")
   
-  // Logistique et prix
   quantity    Int      @default(1)
   unitPrice   Decimal? @map("unit_price") @db.Decimal(10,2)
   totalPrice  Decimal? @map("total_price") @db.Decimal(10,2)
   supplier    String?
   
-  // Statut et suivi
   status      PrescriptionStatus @default(EN_COURS)
   validatedAt DateTime? @map("validated_at")
   orderedAt   DateTime? @map("ordered_at")
   deliveredAt DateTime? @map("delivered_at")
   
-  // Commentaires et notes
   notes       String?
   
   createdAt   DateTime @default(now()) @map("created_at")
@@ -250,8 +230,23 @@ model Prescription {
   category PrescriptionCategory @relation(fields: [categoryId], references: [id])
   creator  User                 @relation(fields: [createdBy], references: [id])
   files    File[]
+  comments PrescriptionComment[]
 
   @@map("prescriptions")
+}
+
+model PrescriptionComment {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  prescriptionId String   @map("prescription_id") @db.Uuid
+  content        String
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  createdBy      String   @map("created_by") @db.Uuid
+
+  prescription Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  creator      User         @relation("PrescriptionCommentCreator", fields: [createdBy], references: [id])
+
+  @@map("prescription_comments")
 }
 
 model File {
