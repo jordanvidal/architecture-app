@@ -44,17 +44,55 @@ interface Project {
   }>
 }
 
+interface Prescription {
+  id: string
+  name: string
+  description?: string
+  brand?: string
+  reference?: string
+  productUrl?: string
+  quantity: number
+  unitPrice?: number
+  totalPrice?: number
+  supplier?: string
+  status: string
+  notes?: string
+  validatedAt?: string
+  orderedAt?: string
+  deliveredAt?: string
+  createdAt: string
+  space: {
+    id: string
+    name: string
+    type?: string
+  }
+  category: {
+    id: string
+    name: string
+    colorHex?: string
+    icon?: string
+  }
+  creator: {
+    firstName?: string
+    lastName?: string
+    email: string
+  }
+}
+
 export default function ProjectDetailPage() {
   const { data: session } = useSession()
   const router = useRouter()
   const params = useParams()
   const [project, setProject] = useState<Project | null>(null)
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([])
   const [loading, setLoading] = useState(true)
+  const [prescriptionsLoading, setPrescriptionsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
 
   useEffect(() => {
     if (params.id) {
       fetchProject(params.id as string)
+      fetchPrescriptions(params.id as string)
     }
   }, [params.id])
 
@@ -72,6 +110,21 @@ export default function ProjectDetailPage() {
       router.push('/projects')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchPrescriptions = async (projectId: string) => {
+    try {
+      setPrescriptionsLoading(true)
+      const response = await fetch(`/api/projects/${projectId}/prescriptions`)
+      if (response.ok) {
+        const data = await response.json()
+        setPrescriptions(data)
+      }
+    } catch (error) {
+      console.error('Erreur prescriptions:', error)
+    } finally {
+      setPrescriptionsLoading(false)
     }
   }
 
@@ -151,7 +204,12 @@ export default function ProjectDetailPage() {
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  setActiveTab(tab.id)
+                  if (tab.id === 'prescriptions' && prescriptions.length === 0) {
+                    fetchPrescriptions(project.id)
+                  }
+                }}
                 className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === tab.id
                     ? 'border-slate-800 text-slate-900'
