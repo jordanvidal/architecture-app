@@ -42,6 +42,7 @@ export default function ProjectsPage() {
     try {
       const response = await fetch('/api/projects')
       const data = await response.json()
+      console.log('🔍 Projets reçus:', data) // Log pour debug
       setProjects(data)
     } catch (error) {
       console.error('Erreur lors du chargement des projets:', error)
@@ -172,19 +173,32 @@ export default function ProjectsPage() {
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {projects.map((project) => (
                 <div key={project.id} className="bg-white rounded-lg border border-slate-200 overflow-hidden hover:shadow-md transition-shadow group">
-                  {/* Image du projet */}
-                  <div className="relative h-48 bg-slate-100">
+                  {/* Image du projet - STYLES INLINE QUI MARCHENT */}
+                  <div className="relative h-48 bg-slate-100 overflow-hidden">
                     {project.imageUrl ? (
                       <img
                         src={project.imageUrl}
                         alt={project.name}
-                        className="w-full h-full object-cover"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          display: 'block',
+                          position: 'relative',
+                          zIndex: 1
+                        }}
+                        onError={(e) => {
+                          console.log('❌ Erreur chargement image:', project.imageUrl)
+                        }}
+                        onLoad={() => {
+                          console.log('✅ Image chargée:', project.name)
+                        }}
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-slate-400">
-                        <div className="text-center">
-                          <span className="text-4xl mb-2 block">🏠</span>
-                          <p className="text-sm">Aucune image</p>
+                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3af' }}>
+                        <div style={{ textAlign: 'center' }}>
+                          <span style={{ fontSize: '2.5rem', marginBottom: '0.5rem', display: 'block' }}>🏠</span>
+                          <p style={{ fontSize: '0.875rem' }}>Aucune image</p>
                         </div>
                       </div>
                     )}

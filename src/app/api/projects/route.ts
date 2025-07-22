@@ -13,6 +13,17 @@ export async function GET() {
     }
 
     const projects = await prisma.project.findMany({
+      select: {
+        id: true,
+        name: true,
+        clientName: true,
+        status: true,
+        budgetTotal: true,
+        budgetSpent: true,
+        progressPercentage: true,
+        createdAt: true,
+        imageUrl: true
+      },
       orderBy: { createdAt: 'desc' }
     })
 
