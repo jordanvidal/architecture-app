@@ -25,6 +25,32 @@ export default function ProjectsPage() {
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [resources, setResources] = useState<any[]>([])
+  const [selectedCategory, setSelectedCategory] = useState<string>('ALL')
+  const [resourceModalOpen, setResourceModalOpen] = useState(false)
+  const [categories, setCategories] = useState<any[]>([])
+  const [newResource, setNewResource] = useState({
+    name: '',
+    description: '',
+    categoryId: '',
+    brand: '',
+    reference: '',
+    productUrl: '',
+    priceMin: '',
+    priceMax: '',
+    supplier: '',
+    availability: '',
+    tags: ''
+  })
+  const [addToProjectModal, setAddToProjectModal] = useState(false)
+  const [selectedResource, setSelectedResource] = useState<any>(null)
+  const [projectSpaces, setProjectSpaces] = useState<any[]>([])
+  const [targetProjectId, setTargetProjectId] = useState<string>('')
+  const [selectedSpaceId, setSelectedSpaceId] = useState<string>('')
+  const [prescriptionData, setPrescriptionData] = useState({
+    quantity: 1,
+    notes: ''
+  })
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -35,14 +61,18 @@ export default function ProjectsPage() {
   useEffect(() => {
     if (session) {
       fetchProjects()
+      fetchCategories()
+      if (activeView === 'library') {
+        fetchResources()
+      }
     }
-  }, [session])
+  }, [session, activeView])
 
   const fetchProjects = async () => {
     try {
       const response = await fetch('/api/projects')
       const data = await response.json()
-      console.log('🔍 Projets reçus:', data) // Log pour debug
+      console.log('🔍 Projets reçus:', data)
       setProjects(data)
     } catch (error) {
       console.error('Erreur lors du chargement des projets:', error)
@@ -66,7 +96,6 @@ export default function ProjectsPage() {
 
       if (response.ok) {
         const data = await response.json()
-        // Mettre à jour la liste des projets
         setProjects(prev => prev.map(p => 
           p.id === selectedProjectId 
             ? { ...p, imageUrl: data.imageUrl }
@@ -81,6 +110,126 @@ export default function ProjectsPage() {
       setUploading(false)
     }
   }
+
+  const fetchResources = async () => {
+    try {
+      const response = await fetch('/api/library/resources')
+      if (response.ok) {
+        const data = await response.json()
+        setResources(data)
+      }
+    } catch (error) {
+      console.error('Erreur chargement ressources:', error)
+    }
+  }
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('/api/categories')
+      if (response.ok) {
+        const data = await response.json()
+        setCategories(data)
+      }
+    } catch (error) {
+      console.error('Erreur chargement catégories:', error)
+    }
+  }
+
+  const handleAddResource = async () => {
+    try {
+      const response = await fetch('/api/library/resources', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...newResource,
+          tags: newResource.tags.split(',').map(t => t.trim()).filter(t => t)
+        })
+      })
+
+      if (response.ok) {
+        const resource = await response.json()
+        setResources(prev => [resource, ...prev])
+        setResourceModalOpen(false)
+        setNewResource({
+          name: '', description: '', categoryId: '', brand: '', reference: '',
+          productUrl: '', priceMin: '', priceMax: '', supplier: '', availability: '', tags: ''
+        })
+      }
+    } catch (error) {
+      console.error('Erreur ajout ressource:', error)
+    }
+  }
+
+  const handleDeleteResource = async (resourceId: string) => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cette ressource ?')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/library/resources/${resourceId}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        setResources(prev => prev.filter(r => r.id !== resourceId))
+      }
+    } catch (error) {
+      console.error('Erreur suppression ressource:', error)
+    }
+  }
+
+  const fetchProjectSpaces = async (projectId: string) => {
+    try {
+      const response = await fetch(`/api/projects/${projectId}/spaces`)
+      if (response.ok) {
+        const spaces = await response.json()
+        setProjectSpaces(spaces)
+      }
+    } catch (error) {
+      console.error('Erreur chargement espaces:', error)
+    }
+  }
+
+  const handleCreatePrescription = async () => {
+    if (!targetProjectId || !selectedSpaceId || !selectedResource) return
+
+    try {
+      const response = await fetch('/api/prescriptions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId: targetProjectId,
+          spaceId: selectedSpaceId,
+          categoryId: selectedResource.categoryId,
+          name: selectedResource.name,
+          description: selectedResource.description,
+          brand: selectedResource.brand,
+          reference: selectedResource.reference,
+          productUrl: selectedResource.productUrl,
+          quantity: prescriptionData.quantity,
+          unitPrice: selectedResource.priceMin || selectedResource.priceMax,
+          totalPrice: (selectedResource.priceMin || selectedResource.priceMax || 0) * prescriptionData.quantity,
+          supplier: selectedResource.supplier,
+          notes: prescriptionData.notes
+        })
+      })
+
+      if (response.ok) {
+        alert(`✅ Prescription "${selectedResource.name}" ajoutée au projet !`)
+        setAddToProjectModal(false)
+        setTargetProjectId('')
+        setSelectedSpaceId('')
+        setPrescriptionData({ quantity: 1, notes: '' })
+      }
+    } catch (error) {
+      console.error('Erreur création prescription:', error)
+    }
+  }
+
+  const filteredResources = resources.filter(resource => {
+    if (selectedCategory === 'ALL') return true
+    return resource.category?.name === selectedCategory
+  })
 
   if (status === 'loading' || loading) {
     return (
@@ -261,65 +410,184 @@ export default function ProjectsPage() {
             </div>
           )
         ) : (
-          // Vue Bibliothèque
+          // Vue Bibliothèque - NOUVELLE INTERFACE
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <div>
-                <h2 className="text-xl font-semibold text-slate-900">Ressources disponibles</h2>
+                <h2 className="text-xl font-semibold text-slate-900">Bibliothèque de ressources</h2>
                 <p className="text-slate-600 text-sm mt-1">
-                  Gérez votre bibliothèque de produits et matériaux
+                  Gérez votre catalogue de produits et matériaux
                 </p>
               </div>
-              <button className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors">
-                + Ajouter ressource
+              <button 
+                onClick={() => setResourceModalOpen(true)}
+                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md"
+              >
+                + Ajouter un produit
               </button>
             </div>
 
             {/* Filtres par catégorie */}
-            <div className="bg-white rounded-lg border border-slate-200 p-6">
+            <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
               <h3 className="font-medium text-slate-900 mb-4">Filtrer par catégorie</h3>
               <div className="flex flex-wrap gap-2">
                 {[
-                  { name: 'Tous', icon: '📚', count: 0 },
-                  { name: 'Mobilier', icon: '🛋️', count: 0 },
-                  { name: 'Éclairage', icon: '💡', count: 0 },
-                  { name: 'Décoration', icon: '🖼️', count: 0 },
-                  { name: 'Textile', icon: '🏺', count: 0 },
-                  { name: 'Revêtement', icon: '🧱', count: 0 }
+                  { name: 'ALL', label: 'Tous', icon: '📚', count: resources.length },
+                  { name: 'mobilier', label: 'Mobilier', icon: '🛋️', count: resources.filter(r => r.category?.name === 'mobilier').length },
+                  { name: 'eclairage', label: 'Éclairage', icon: '💡', count: resources.filter(r => r.category?.name === 'eclairage').length },
+                  { name: 'decoration', label: 'Décoration', icon: '🖼️', count: resources.filter(r => r.category?.name === 'decoration').length },
+                  { name: 'textile', label: 'Textile', icon: '🏺', count: resources.filter(r => r.category?.name === 'textile').length },
+                  { name: 'revetement', label: 'Revêtement', icon: '🧱', count: resources.filter(r => r.category?.name === 'revetement').length },
+                  { name: 'peinture', label: 'Peinture', icon: '🎨', count: resources.filter(r => r.category?.name === 'peinture').length }
                 ].map((category) => (
                   <button
                     key={category.name}
-                    className="px-3 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors text-sm"
+                    onClick={() => setSelectedCategory(category.name)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      selectedCategory === category.name
+                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
                   >
                     <span className="mr-1">{category.icon}</span>
-                    {category.name} ({category.count})
+                    {category.label} ({category.count})
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Zone de contenu bibliothèque */}
-            <div className="bg-white rounded-lg border border-slate-200 p-8 text-center">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">📚</span>
+            {/* Liste des ressources */}
+            {filteredResources.length === 0 ? (
+              <div className="bg-white rounded-xl border border-slate-200 p-8 text-center shadow-sm">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-2xl">📦</span>
+                </div>
+                <h3 className="text-xl font-semibold text-slate-900 mb-2">
+                  {selectedCategory === 'ALL' ? 'Aucun produit' : `Aucun produit dans "${selectedCategory}"`}
+                </h3>
+                <p className="text-slate-600 mb-4">
+                  Commencez par ajouter des produits à votre bibliothèque !
+                </p>
+                <button 
+                  onClick={() => setResourceModalOpen(true)}
+                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200"
+                >
+                  + Ajouter le premier produit
+                </button>
               </div>
-              <h3 className="text-xl font-semibold text-slate-900 mb-2">
-                Bibliothèque en construction
-              </h3>
-              <p className="text-slate-600 mb-4">
-                Bientôt : gérez votre collection de produits, matériaux et fournisseurs préférés !
-              </p>
-              <div className="bg-slate-50 rounded-lg p-4 text-left max-w-md mx-auto">
-                <h4 className="font-medium text-slate-900 mb-2">Fonctionnalités prévues :</h4>
-                <ul className="text-sm text-slate-600 space-y-1">
-                  <li>• Catalogue de produits par catégorie</li>
-                  <li>• Prix et disponibilités</li>
-                  <li>• Liens vers fournisseurs</li>
-                  <li>• Import/export vers prescriptions</li>
-                  <li>• Recherche avancée</li>
-                </ul>
+            ) : (
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {filteredResources.map((resource) => (
+                  <div
+                    key={resource.id}
+                    className="bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-lg transition-all duration-200 group"
+                  >
+                    {/* Image du produit */}
+                    <div className="relative h-48 bg-gradient-to-br from-slate-100 to-slate-200">
+                      {resource.imageUrl ? (
+                        <img
+                          src={resource.imageUrl}
+                          alt={resource.name}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            display: 'block'
+                          }}
+                        />
+                      ) : (
+                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3af' }}>
+                          <div style={{ textAlign: 'center' }}>
+                            <span style={{ fontSize: '3rem', marginBottom: '0.5rem', display: 'block' }}>
+                              {resource.category?.icon || '📦'}
+                            </span>
+                            <p style={{ fontSize: '0.875rem' }}>Aucune image</p>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Badge catégorie */}
+                      <div className="absolute top-3 left-3">
+                        <span 
+                          className="px-2 py-1 text-xs font-medium text-white rounded-lg shadow-sm"
+                          style={{ backgroundColor: resource.category?.colorHex || '#64748b' }}
+                        >
+                          {resource.category?.icon} {resource.category?.name}
+                        </span>
+                      </div>
+
+                      {/* Actions au survol */}
+                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center">
+                        <div className="opacity-0 group-hover:opacity-100 flex gap-2 transition-opacity">
+                          <button className="bg-white text-slate-800 px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
+                            📝 Modifier
+                          </button>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDeleteResource(resource.id)
+                            }}
+                            className="bg-red-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-red-600"
+                          >
+                            🗑️ Supprimer
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Contenu de la carte */}
+                    <div className="p-4">
+                      <div className="mb-3">
+                        <h3 className="text-lg font-semibold text-slate-900 mb-1">
+                          {resource.name}
+                        </h3>
+                        {resource.brand && (
+                          <p className="text-sm text-slate-600 font-medium">{resource.brand}</p>
+                        )}
+                        {resource.description && (
+                          <p className="text-sm text-slate-600 mt-1 line-clamp-2">{resource.description}</p>
+                        )}
+                      </div>
+
+                      {/* Prix */}
+                      {(resource.priceMin || resource.priceMax) && (
+                        <div className="mb-3">
+                          <span className="text-lg font-bold text-slate-900">
+                            {resource.priceMin && resource.priceMax && resource.priceMin !== resource.priceMax
+                              ? `${resource.priceMin} - ${resource.priceMax} €`
+                              : `${resource.priceMin || resource.priceMax} €`
+                            }
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Actions */}
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => {
+                            setSelectedResource(resource)
+                            setAddToProjectModal(true)
+                          }}
+                          className="flex-1 px-3 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg text-sm font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200"
+                        >
+                          + Ajouter au projet
+                        </button>
+                        {resource.productUrl && (
+                          <a
+                            href={resource.productUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors"
+                          >
+                            🔗
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
+            )}
           </div>
         )}
       </main>
@@ -384,6 +652,370 @@ export default function ProjectsPage() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal d'ajout de ressource */}
+      {resourceModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 rounded-t-xl">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xl font-semibold text-slate-900">
+                  Ajouter un produit à la bibliothèque
+                </h3>
+                <button
+                  onClick={() => setResourceModalOpen(false)}
+                  className="text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Informations de base */}
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Nom du produit *
+                  </label>
+                  <input
+                    type="text"
+                    value={newResource.name}
+                    onChange={(e) => setNewResource(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Ex: Canapé d'angle KIVIK"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Catégorie *
+                  </label>
+                  <select
+                    value={newResource.categoryId}
+                    onChange={(e) => setNewResource(prev => ({ ...prev, categoryId: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Sélectionner une catégorie</option>
+                    {categories.map(cat => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.icon} {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Description
+                </label>
+                <textarea
+                  value={newResource.description}
+                  onChange={(e) => setNewResource(prev => ({ ...prev, description: e.target.value }))}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  placeholder="Description détaillée du produit..."
+                />
+              </div>
+
+              {/* Détails produit */}
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Marque
+                  </label>
+                  <input
+                    type="text"
+                    value={newResource.brand}
+                    onChange={(e) => setNewResource(prev => ({ ...prev, brand: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Ex: IKEA, BoConcept..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Référence
+                  </label>
+                  <input
+                    type="text"
+                    value={newResource.reference}
+                    onChange={(e) => setNewResource(prev => ({ ...prev, reference: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Ex: KIVIK-ANGLE-3PL"
+                  />
+                </div>
+              </div>
+
+              {/* Prix */}
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Prix minimum (€)
+                  </label>
+                  <input
+                    type="number"
+                    value={newResource.priceMin}
+                    onChange={(e) => setNewResource(prev => ({ ...prev, priceMin: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="299"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Prix maximum (€)
+                  </label>
+                  <input
+                    type="number"
+                    value={newResource.priceMax}
+                    onChange={(e) => setNewResource(prev => ({ ...prev, priceMax: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="399"
+                  />
+                </div>
+              </div>
+
+              {/* Fournisseur et disponibilité */}
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Fournisseur
+                  </label>
+                  <input
+                    type="text"
+                    value={newResource.supplier}
+                    onChange={(e) => setNewResource(prev => ({ ...prev, supplier: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Ex: IKEA France"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Disponibilité
+                  </label>
+                  <select
+                    value={newResource.availability}
+                    onChange={(e) => setNewResource(prev => ({ ...prev, availability: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Sélectionner</option>
+                    <option value="En stock">En stock</option>
+                    <option value="Sur commande">Sur commande</option>
+                    <option value="Selon saison">Selon saison</option>
+                    <option value="Rupture">Rupture temporaire</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* URL et tags */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Lien produit
+                </label>
+                <input
+                  type="url"
+                  value={newResource.productUrl}
+                  onChange={(e) => setNewResource(prev => ({ ...prev, productUrl: e.target.value }))}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="https://www.ikea.com/fr/fr/p/..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Tags (séparés par des virgules)
+                </label>
+                <input
+                  type="text"
+                  value={newResource.tags}
+                  onChange={(e) => setNewResource(prev => ({ ...prev, tags: e.target.value }))}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="canapé, angle, modulable, familial"
+                />
+              </div>
+            </div>
+
+            {/* Footer du modal */}
+            <div className="sticky bottom-0 bg-slate-50 border-t border-slate-200 px-6 py-4 rounded-b-xl">
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setResourceModalOpen(false)}
+                  className="px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleAddResource}
+                  disabled={!newResource.name || !newResource.categoryId}
+                  className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                >
+                  Ajouter le produit
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal "Ajouter au projet" - VERSION COMPLÈTE */}
+      {addToProjectModal && selectedResource && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-lg w-full shadow-2xl">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-semibold text-slate-900">
+                  Ajouter à un projet
+                </h3>
+                <button
+                  onClick={() => {
+                    setAddToProjectModal(false)
+                    setTargetProjectId('')
+                    setSelectedSpaceId('')
+                    setPrescriptionData({ quantity: 1, notes: '' })
+                  }}
+                  className="text-slate-400 hover:text-slate-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Produit sélectionné */}
+              <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 mb-6 border border-blue-200">
+                <div className="flex items-center gap-3">
+                  <div 
+                    className="w-4 h-4 rounded-full" 
+                    style={{ backgroundColor: selectedResource.category?.colorHex || '#64748b' }}
+                  ></div>
+                  <div>
+                    <h4 className="font-semibold text-slate-900">{selectedResource.name}</h4>
+                    <p className="text-sm text-slate-600">
+                      {selectedResource.brand} • {selectedResource.category?.name}
+                    </p>
+                    {(selectedResource.priceMin || selectedResource.priceMax) && (
+                      <p className="text-sm font-medium text-blue-700">
+                        {selectedResource.priceMin && selectedResource.priceMax && selectedResource.priceMin !== selectedResource.priceMax
+                          ? `${selectedResource.priceMin} - ${selectedResource.priceMax} €`
+                          : `${selectedResource.priceMin || selectedResource.priceMax} €`
+                        }
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Formulaire */}
+              <div className="space-y-4">
+                {/* Sélection du projet */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Projet *
+                  </label>
+                  <select
+                    value={targetProjectId}
+                    onChange={(e) => {
+                      setTargetProjectId(e.target.value)
+                      setSelectedSpaceId('')
+                      if (e.target.value) {
+                        fetchProjectSpaces(e.target.value)
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Choisir un projet</option>
+                    {projects.map(project => (
+                      <option key={project.id} value={project.id}>
+                        {project.name} - {project.clientName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Sélection de l'espace */}
+                {targetProjectId && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Espace *
+                    </label>
+                    <select
+                      value={selectedSpaceId}
+                      onChange={(e) => setSelectedSpaceId(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">Choisir un espace</option>
+                      {projectSpaces.map(space => (
+                        <option key={space.id} value={space.id}>
+                          {space.name}
+                        </option>
+                      ))}
+                    </select>
+                    {projectSpaces.length === 0 && targetProjectId && (
+                      <p className="text-sm text-amber-600 mt-1">
+                        ⚠️ Aucun espace défini pour ce projet. Les espaces seront créés automatiquement.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Quantité */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Quantité
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={prescriptionData.quantity}
+                    onChange={(e) => setPrescriptionData(prev => ({ ...prev, quantity: parseInt(e.target.value) || 1 }))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Notes (optionnel)
+                  </label>
+                  <textarea
+                    value={prescriptionData.notes}
+                    onChange={(e) => setPrescriptionData(prev => ({ ...prev, notes: e.target.value }))}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    placeholder="Notes spécifiques pour cette prescription..."
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  onClick={() => {
+                    setAddToProjectModal(false)
+                    setTargetProjectId('')
+                    setSelectedSpaceId('')
+                    setPrescriptionData({ quantity: 1, notes: '' })
+                  }}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleCreatePrescription}
+                  disabled={!targetProjectId || !selectedResource}
+                  className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                >
+                  Créer la prescription
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
