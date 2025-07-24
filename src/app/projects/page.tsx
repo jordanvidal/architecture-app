@@ -29,6 +29,7 @@ export default function ProjectsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL')
   const [resourceModalOpen, setResourceModalOpen] = useState(false)
   const [categories, setCategories] = useState<any[]>([])
+  const [searchQuery, setSearchQuery] = useState<string>('')
   const [newResource, setNewResource] = useState({
     name: '',
     description: '',
@@ -42,6 +43,8 @@ export default function ProjectsPage() {
     availability: '',
     tags: ''
   })
+  const [editingResource, setEditingResource] = useState<any>(null)
+  const [isEditing, setIsEditing] = useState(false)
   const [addToProjectModal, setAddToProjectModal] = useState(false)
   const [selectedResource, setSelectedResource] = useState<any>(null)
   const [projectSpaces, setProjectSpaces] = useState<any[]>([])
@@ -73,9 +76,16 @@ export default function ProjectsPage() {
       const response = await fetch('/api/projects')
       const data = await response.json()
       console.log('🔍 Projets reçus:', data)
-      setProjects(data)
+      
+      if (Array.isArray(data)) {
+        setProjects(data)
+      } else {
+        console.error('❌ Les données reçues ne sont pas un array:', data)
+        setProjects([])
+      }
     } catch (error) {
       console.error('Erreur lors du chargement des projets:', error)
+      setProjects([])
     } finally {
       setLoading(false)
     }
@@ -137,8 +147,11 @@ export default function ProjectsPage() {
 
   const handleAddResource = async () => {
     try {
-      const response = await fetch('/api/library/resources', {
-        method: 'POST',
+      const url = isEditing ? `/api/library/resources/${editingResource.id}` : '/api/library/resources'
+      const method = isEditing ? 'PUT' : 'POST'
+      
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...newResource,
@@ -148,16 +161,43 @@ export default function ProjectsPage() {
 
       if (response.ok) {
         const resource = await response.json()
-        setResources(prev => [resource, ...prev])
+        
+        if (isEditing) {
+          setResources(prev => prev.map(r => r.id === resource.id ? resource : r))
+        } else {
+          setResources(prev => [resource, ...prev])
+        }
+        
         setResourceModalOpen(false)
+        setIsEditing(false)
+        setEditingResource(null)
         setNewResource({
           name: '', description: '', categoryId: '', brand: '', reference: '',
           productUrl: '', priceMin: '', priceMax: '', supplier: '', availability: '', tags: ''
         })
       }
     } catch (error) {
-      console.error('Erreur ajout ressource:', error)
+      console.error('Erreur ajout/édition ressource:', error)
     }
+  }
+
+  const handleEditResource = (resource: any) => {
+    setEditingResource(resource)
+    setIsEditing(true)
+    setNewResource({
+      name: resource.name || '',
+      description: resource.description || '',
+      categoryId: resource.categoryId || '',
+      brand: resource.brand || '',
+      reference: resource.reference || '',
+      productUrl: resource.productUrl || '',
+      priceMin: resource.priceMin?.toString() || '',
+      priceMax: resource.priceMax?.toString() || '',
+      supplier: resource.supplier || '',
+      availability: resource.availability || '',
+      tags: resource.tags?.join(', ') || ''
+    })
+    setResourceModalOpen(true)
   }
 
   const handleDeleteResource = async (resourceId: string) => {
@@ -178,12 +218,30 @@ export default function ProjectsPage() {
     }
   }
 
+  const toggleFavorite = async (resourceId: string, currentFavorite: boolean) => {
+    try {
+      const response = await fetch(`/api/library/resources/${resourceId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isFavorite: !currentFavorite })
+      })
+
+      if (response.ok) {
+        setResources(prev => prev.map(r => 
+          r.id === resourceId ? { ...r, isFavorite: !currentFavorite } : r
+        ))
+      }
+    } catch (error) {
+      console.error('Erreur toggle favorite:', error)
+    }
+  }
+
   const fetchProjectSpaces = async (projectId: string) => {
     try {
       const response = await fetch(`/api/projects/${projectId}/spaces`)
       if (response.ok) {
-        const spaces = await response.json()
-        setProjectSpaces(spaces)
+        const data = await response.json()
+        setProjectSpaces(data)
       }
     } catch (error) {
       console.error('Erreur chargement espaces:', error)
@@ -191,7 +249,7 @@ export default function ProjectsPage() {
   }
 
   const handleCreatePrescription = async () => {
-    if (!targetProjectId || !selectedSpaceId || !selectedResource) return
+    if (!targetProjectId || !selectedResource) return
 
     try {
       const response = await fetch('/api/prescriptions', {
@@ -227,8 +285,21 @@ export default function ProjectsPage() {
   }
 
   const filteredResources = resources.filter(resource => {
-    if (selectedCategory === 'ALL') return true
-    return resource.category?.name === selectedCategory
+    let matchesCategory = true
+    if (selectedCategory === 'ALL') {
+      matchesCategory = true
+    } else if (selectedCategory === 'FAVORITES') {
+      matchesCategory = resource.isFavorite
+    } else {
+      matchesCategory = resource.category?.name === selectedCategory
+    }
+    
+    const matchesSearch = searchQuery === '' || 
+      resource.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      resource.brand?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      resource.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    
+    return matchesCategory && matchesSearch
   })
 
   if (status === 'loading' || loading) {
@@ -306,7 +377,7 @@ export default function ProjectsPage() {
       <main className="max-w-7xl mx-auto px-6 py-8">
         {activeView === 'projects' ? (
           // Vue Projets
-          projects.length === 0 ? (
+          !Array.isArray(projects) || projects.length === 0 ? (
             <div className="bg-white rounded-lg border border-slate-200 p-8 text-center">
               <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl">📋</span>
@@ -320,9 +391,8 @@ export default function ProjectsPage() {
             </div>
           ) : (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {projects.map((project) => (
+              {Array.isArray(projects) && projects.map((project) => (
                 <div key={project.id} className="bg-white rounded-lg border border-slate-200 overflow-hidden hover:shadow-md transition-shadow group">
-                  {/* Image du projet - STYLES INLINE QUI MARCHENT */}
                   <div className="relative h-48 bg-slate-100 overflow-hidden">
                     {project.imageUrl ? (
                       <img
@@ -332,15 +402,7 @@ export default function ProjectsPage() {
                           width: '100%',
                           height: '100%',
                           objectFit: 'cover',
-                          display: 'block',
-                          position: 'relative',
-                          zIndex: 1
-                        }}
-                        onError={(e) => {
-                          console.log('❌ Erreur chargement image:', project.imageUrl)
-                        }}
-                        onLoad={() => {
-                          console.log('✅ Image chargée:', project.name)
+                          display: 'block'
                         }}
                       />
                     ) : (
@@ -352,7 +414,6 @@ export default function ProjectsPage() {
                       </div>
                     )}
                     
-                    {/* Overlay au survol */}
                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center">
                       <button
                         onClick={(e) => {
@@ -368,9 +429,7 @@ export default function ProjectsPage() {
                     </div>
                   </div>
 
-                  {/* Contenu de la carte */}
                   <a href={`/projects/${project.id}`} className="block p-6">
-                    {/* Informations projet épurées */}
                     <div className="mb-4">
                       <h3 className="text-lg font-semibold text-slate-900 mb-1">
                         {project.name}
@@ -378,26 +437,24 @@ export default function ProjectsPage() {
                       <p className="text-slate-600 text-sm">{project.clientName}</p>
                     </div>
 
-                    {/* Progress */}
                     <div className="mb-4">
                       <div className="flex justify-between text-sm text-slate-600 mb-1">
                         <span>Avancement</span>
-                        <span>{project.progressPercentage}%</span>
+                        <span>{project.progressPercentage || 0}%</span>
                       </div>
                       <div className="w-full bg-slate-200 rounded-full h-2">
                         <div
                           className="bg-slate-800 h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${project.progressPercentage}%` }}
+                          style={{ width: `${project.progressPercentage || 0}%` }}
                         ></div>
                       </div>
                     </div>
 
-                    {/* Budget */}
                     <div className="flex justify-between items-center text-sm">
                       <div>
                         <span className="text-slate-600">Budget: </span>
                         <span className="font-medium text-slate-900">
-                          {project.budgetTotal?.toLocaleString('fr-FR')} €
+                          {project.budgetTotal?.toLocaleString('fr-FR') || '0'} €
                         </span>
                       </div>
                       <div className="text-slate-500">
@@ -410,7 +467,7 @@ export default function ProjectsPage() {
             </div>
           )
         ) : (
-          // Vue Bibliothèque - NOUVELLE INTERFACE
+          // Vue Bibliothèque
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <div>
@@ -427,16 +484,50 @@ export default function ProjectsPage() {
               </button>
             </div>
 
+            {/* Barre de recherche */}
+            <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Rechercher par nom, marque ou description..."
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    <svg className="h-5 w-5 text-slate-400 hover:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+              {searchQuery && (
+                <p className="text-sm text-slate-600 mt-2">
+                  🔍 {filteredResources.length} résultat{filteredResources.length !== 1 ? 's' : ''} pour "{searchQuery}"
+                </p>
+              )}
+            </div>
+
             {/* Filtres par catégorie */}
             <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
               <h3 className="font-medium text-slate-900 mb-4">Filtrer par catégorie</h3>
               <div className="flex flex-wrap gap-2">
                 {[
                   { name: 'ALL', label: 'Tous', icon: '📚', count: resources.length },
+                  { name: 'FAVORITES', label: 'Favoris', icon: '⭐', count: resources.filter(r => r.isFavorite).length },
                   { name: 'mobilier', label: 'Mobilier', icon: '🛋️', count: resources.filter(r => r.category?.name === 'mobilier').length },
                   { name: 'eclairage', label: 'Éclairage', icon: '💡', count: resources.filter(r => r.category?.name === 'eclairage').length },
                   { name: 'decoration', label: 'Décoration', icon: '🖼️', count: resources.filter(r => r.category?.name === 'decoration').length },
-                  { name: 'textile', label: 'Textile', icon: '🏺', count: resources.filter(r => r.category?.name === 'textile').length },
+                  { name: 'textile', label: 'Textile', icon: '🧶', count: resources.filter(r => r.category?.name === 'textile').length },
                   { name: 'revetement', label: 'Revêtement', icon: '🧱', count: resources.filter(r => r.category?.name === 'revetement').length },
                   { name: 'peinture', label: 'Peinture', icon: '🎨', count: resources.filter(r => r.category?.name === 'peinture').length }
                 ].map((category) => (
@@ -463,17 +554,23 @@ export default function ProjectsPage() {
                   <span className="text-2xl">📦</span>
                 </div>
                 <h3 className="text-xl font-semibold text-slate-900 mb-2">
-                  {selectedCategory === 'ALL' ? 'Aucun produit' : `Aucun produit dans "${selectedCategory}"`}
+                  {selectedCategory === 'ALL' ? 'Aucun produit' : 
+                   selectedCategory === 'FAVORITES' ? 'Aucun favori' :
+                   `Aucun produit dans "${selectedCategory}"`}
                 </h3>
                 <p className="text-slate-600 mb-4">
-                  Commencez par ajouter des produits à votre bibliothèque !
+                  {selectedCategory === 'FAVORITES' ? 
+                    'Ajoutez des produits en favoris en cliquant sur l\'étoile !' :
+                    'Commencez par ajouter des produits à votre bibliothèque !'}
                 </p>
-                <button 
-                  onClick={() => setResourceModalOpen(true)}
-                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200"
-                >
-                  + Ajouter le premier produit
-                </button>
+                {selectedCategory === 'ALL' && (
+                  <button 
+                    onClick={() => setResourceModalOpen(true)}
+                    className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200"
+                  >
+                    + Ajouter le premier produit
+                  </button>
+                )}
               </div>
             ) : (
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -482,7 +579,6 @@ export default function ProjectsPage() {
                     key={resource.id}
                     className="bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-lg transition-all duration-200 group"
                   >
-                    {/* Image du produit */}
                     <div className="relative h-48 bg-gradient-to-br from-slate-100 to-slate-200">
                       {resource.imageUrl ? (
                         <img
@@ -516,10 +612,39 @@ export default function ProjectsPage() {
                         </span>
                       </div>
 
+                      {/* ÉTOILE FAVORITE - VERSION SEXY */}
+                      <div className="absolute top-2 right-2" style={{ zIndex: 999 }}>
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            console.log('🔍 CLIC ÉTOILE:', resource.id, resource.isFavorite)
+                            toggleFavorite(resource.id, resource.isFavorite)
+                          }}
+                          className={`w-8 h-8 rounded-full shadow-lg transition-all duration-300 flex items-center justify-center hover:scale-110 ${
+                            resource.isFavorite 
+                              ? 'bg-gradient-to-r from-yellow-400 to-orange-400 hover:from-yellow-500 hover:to-orange-500' 
+                              : 'bg-white bg-opacity-90 hover:bg-opacity-100 hover:bg-yellow-50'
+                          }`}
+                        >
+                          <span className={`text-lg transition-all duration-200 ${
+                            resource.isFavorite ? 'text-white' : 'text-yellow-500'
+                          }`}>
+                            {resource.isFavorite ? '⭐' : '☆'}
+                          </span>
+                        </button>
+                      </div>
+
                       {/* Actions au survol */}
                       <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center">
                         <div className="opacity-0 group-hover:opacity-100 flex gap-2 transition-opacity">
-                          <button className="bg-white text-slate-800 px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleEditResource(resource)
+                            }}
+                            className="bg-white text-slate-800 px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-50"
+                          >
                             📝 Modifier
                           </button>
                           <button 
@@ -535,7 +660,6 @@ export default function ProjectsPage() {
                       </div>
                     </div>
 
-                    {/* Contenu de la carte */}
                     <div className="p-4">
                       <div className="mb-3">
                         <h3 className="text-lg font-semibold text-slate-900 mb-1">
@@ -663,10 +787,18 @@ export default function ProjectsPage() {
             <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 rounded-t-xl">
               <div className="flex justify-between items-center">
                 <h3 className="text-xl font-semibold text-slate-900">
-                  Ajouter un produit à la bibliothèque
+                  {isEditing ? 'Modifier le produit' : 'Ajouter un produit à la bibliothèque'}
                 </h3>
                 <button
-                  onClick={() => setResourceModalOpen(false)}
+                  onClick={() => {
+                    setResourceModalOpen(false)
+                    setIsEditing(false)
+                    setEditingResource(null)
+                    setNewResource({
+                      name: '', description: '', categoryId: '', brand: '', reference: '',
+                      productUrl: '', priceMin: '', priceMax: '', supplier: '', availability: '', tags: ''
+                    })
+                  }}
                   className="text-slate-400 hover:text-slate-600 transition-colors"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -677,7 +809,6 @@ export default function ProjectsPage() {
             </div>
 
             <div className="p-6 space-y-6">
-              {/* Informations de base */}
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -724,7 +855,6 @@ export default function ProjectsPage() {
                 />
               </div>
 
-              {/* Détails produit */}
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -753,7 +883,6 @@ export default function ProjectsPage() {
                 </div>
               </div>
 
-              {/* Prix */}
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -782,7 +911,6 @@ export default function ProjectsPage() {
                 </div>
               </div>
 
-              {/* Fournisseur et disponibilité */}
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -815,7 +943,6 @@ export default function ProjectsPage() {
                 </div>
               </div>
 
-              {/* URL et tags */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
                   Lien produit
@@ -843,11 +970,18 @@ export default function ProjectsPage() {
               </div>
             </div>
 
-            {/* Footer du modal */}
             <div className="sticky bottom-0 bg-slate-50 border-t border-slate-200 px-6 py-4 rounded-b-xl">
               <div className="flex justify-end gap-3">
                 <button
-                  onClick={() => setResourceModalOpen(false)}
+                  onClick={() => {
+                    setResourceModalOpen(false)
+                    setIsEditing(false)
+                    setEditingResource(null)
+                    setNewResource({
+                      name: '', description: '', categoryId: '', brand: '', reference: '',
+                      productUrl: '', priceMin: '', priceMax: '', supplier: '', availability: '', tags: ''
+                    })
+                  }}
                   className="px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
                 >
                   Annuler
@@ -857,7 +991,7 @@ export default function ProjectsPage() {
                   disabled={!newResource.name || !newResource.categoryId}
                   className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
                 >
-                  Ajouter le produit
+                  {isEditing ? 'Mettre à jour' : 'Ajouter le produit'}
                 </button>
               </div>
             </div>
@@ -865,7 +999,7 @@ export default function ProjectsPage() {
         </div>
       )}
 
-      {/* Modal "Ajouter au projet" - VERSION COMPLÈTE */}
+      {/* Modal "Ajouter au projet" */}
       {addToProjectModal && selectedResource && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-lg w-full shadow-2xl">
@@ -889,7 +1023,6 @@ export default function ProjectsPage() {
                 </button>
               </div>
 
-              {/* Produit sélectionné */}
               <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 mb-6 border border-blue-200">
                 <div className="flex items-center gap-3">
                   <div 
@@ -913,9 +1046,7 @@ export default function ProjectsPage() {
                 </div>
               </div>
 
-              {/* Formulaire */}
               <div className="space-y-4">
-                {/* Sélection du projet */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
                     Projet *
@@ -940,7 +1071,6 @@ export default function ProjectsPage() {
                   </select>
                 </div>
 
-                {/* Sélection de l'espace */}
                 {targetProjectId && (
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -966,7 +1096,6 @@ export default function ProjectsPage() {
                   </div>
                 )}
 
-                {/* Quantité */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
                     Quantité
@@ -980,7 +1109,6 @@ export default function ProjectsPage() {
                   />
                 </div>
 
-                {/* Notes */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
                     Notes (optionnel)

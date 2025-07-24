@@ -78,10 +78,13 @@ model Project {
   description        String?
   client_name        String
   client_email       String?
+  address            String?
   status             ProjectStatus @default(BROUILLON)
   budget_total       Float?
   budget_spent       Float?
   progress_percentage Int      @default(0)
+  start_date         DateTime?
+  end_date           DateTime?
   
   created_by         String
   creator            User     @relation(fields: [created_by], references: [id])
@@ -93,6 +96,21 @@ model Project {
   
   // Pour l'image du projet
   image_url          String?
+
+  // Adresse de livraison
+  delivery_contact_name     String?
+  delivery_company          String?
+  delivery_address          String?
+  delivery_city             String?
+  delivery_zip_code         String?
+  delivery_country          String?
+  delivery_access_code      String?
+  delivery_floor            String?
+  delivery_door_code        String?
+  delivery_instructions     String?
+
+  // Adresses de facturation (JSON)
+  billing_addresses         Json?
 
   @@map("projects")
 }
