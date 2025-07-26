@@ -56,6 +56,8 @@ model User {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  uploadedFiles ProjectFile[]
 }
 
 model VerificationToken {
@@ -93,6 +95,7 @@ model Project {
   
   spaces             Space[]
   prescriptions      Prescription[]
+  files              ProjectFile[]
   
   // Pour l'image du projet
   image_url          String?
@@ -137,6 +140,8 @@ model Space {
   
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  files       ProjectFile[]
 
   @@map("spaces")
 }
@@ -235,4 +240,50 @@ model ResourceLibrary {
   updatedAt    DateTime @updatedAt
 
   @@map("resource_library")
+}
+
+
+model ProjectFile {
+  id          String   @id @default(cuid())
+  name        String
+  originalName String
+  type        FileType
+  category    FileCategory
+  mimeType    String
+  size        Int
+  url         String
+  description String?
+  
+  // Relations
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId   String
+  
+  space       Space?   @relation(fields: [spaceId], references: [id], onDelete: SetNull)
+  spaceId     String?
+  
+  uploadedBy  String
+  uploader    User     @relation(fields: [uploadedBy], references: [id])
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("project_files")
+}
+
+enum FileType {
+  IMAGE
+  PDF
+  DOCUMENT
+  MODEL_3D
+  PLAN
+  VIDEO
+}
+
+enum FileCategory {
+  VISUEL_3D
+  PLANS_TECHNIQUES
+  ELEVATIONS
+  PHOTOS_CHANTIER
+  DOCUMENTS
+  AUTRES
 }

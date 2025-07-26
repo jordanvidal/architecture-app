@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter, useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import SpacesTab from '@/components/spaces/SpacesTab'
+import FilesPlansModule from '@/components/files/FilesPlansModule'
 
 interface Project {
   id: string
@@ -94,13 +95,28 @@ export default function ProjectDetailPage() {
   const [comments, setComments] = useState<any[]>([])
   const [newComment, setNewComment] = useState('')
   const [showLibraryModal, setShowLibraryModal] = useState(false)
+  const [spaces, setSpaces] = useState<Array<{ id: string; name: string }>>([])
+
 
   useEffect(() => {
     if (params.id) {
       fetchProject(params.id as string)
       fetchPrescriptions(params.id as string)
+      fetchSpaces(params.id as string) 
     }
   }, [params.id])
+
+  const fetchSpaces = async (projectId: string) => {
+  try {
+    const response = await fetch(`/api/projects/${projectId}/spaces`)
+    if (response.ok) {
+      const data = await response.json()
+      setSpaces(data)
+    }
+  } catch (error) {
+    console.error('Erreur chargement espaces:', error)
+  }
+}
 
   const fetchProject = async (projectId: string) => {
     try {
@@ -468,7 +484,14 @@ export default function ProjectDetailPage() {
           />
         )}
 
-        {activeTab !== 'overview' && activeTab !== 'prescriptions' && (
+        {activeTab === 'files' && (
+  <FilesPlansModule 
+    projectId={project.id}
+    spaces={spaces} // Vous devrez récupérer les espaces depuis votre API
+  />
+)}
+
+        {activeTab !== 'overview' && activeTab !== 'prescriptions' && activeTab !== 'files' && (
           <div className="bg-white rounded-lg border border-slate-200 p-8 text-center">
             <div className="text-6xl mb-4">🚧</div>
             <h3 className="text-xl font-semibold text-slate-900 mb-2">
