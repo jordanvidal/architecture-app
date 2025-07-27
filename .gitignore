@@ -48,6 +48,10 @@ public/uploads/
 backups/*.sql
 backups/*.dump
 !backups/.gitignore
+backups/
+*.tar.gz
+*.zip
+backup-*/
 
 # IDE
 .vscode/
@@ -59,3 +63,4 @@ backups/*.dump
 # OS
 .DS_Store
 Thumbs.db
+
