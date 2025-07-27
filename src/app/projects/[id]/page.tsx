@@ -3,7 +3,8 @@
 import { useSession } from 'next-auth/react'
 import { useRouter, useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import SpaceFilesManager from '@/components/spaces/SpaceFilesManager'
+import SpacesTab from '@/components/spaces/SpacesTab'
+import FilesPlansModule from '@/components/files/FilesPlansModule'
 
 interface Project {
   id: string
@@ -45,14 +46,6 @@ interface Project {
   }>
 }
 
-interface Space {
-  id: string
-  name: string
-  type: string
-  description?: string
-  surfaceM2?: number
-}
-
 interface Prescription {
   id: string
   name: string
@@ -74,7 +67,7 @@ interface Prescription {
     id: string
     name: string
     type?: string
-  }
+  } | null
   category: {
     id: string
     name: string
@@ -92,57 +85,38 @@ export default function ProjectDetailPage() {
   const { data: session } = useSession()
   const router = useRouter()
   const params = useParams()
-  
-  // États principaux
   const [project, setProject] = useState<Project | null>(null)
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([])
-  const [spaces, setSpaces] = useState<Space[]>([])
   const [loading, setLoading] = useState(true)
   const [prescriptionsLoading, setPrescriptionsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
   const [selectedPrescription, setSelectedPrescription] = useState<Prescription | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
-  const [statusFilter, setStatusFilter] = useState<string>('ALL')
   const [comments, setComments] = useState<any[]>([])
   const [newComment, setNewComment] = useState('')
-  const [commentsLoading, setCommentsLoading] = useState(false)
-  const [spaceFiles, setSpaceFiles] = useState<Record<string, any[]>>({})
-  const [showFilesModal, setShowFilesModal] = useState(false)
-  const [selectedSpaceForFiles, setSelectedSpaceForFiles] = useState<Space | null>(null)
-  const [openSpaceMenu, setOpenSpaceMenu] = useState<string | null>(null)
-  const [editingSpace, setEditingSpace] = useState<Space | null>(null)
-  
-  // États pour la gestion des espaces
-  const [selectedSpace, setSelectedSpace] = useState<string>('ALL')
-  const [showAddSpace, setShowAddSpace] = useState(false)
-  const [newSpace, setNewSpace] = useState({
-    name: '',
-    type: 'AUTRE',
-    surfaceM2: ''
-  })
+  const [showLibraryModal, setShowLibraryModal] = useState(false)
+  const [spaces, setSpaces] = useState<Array<{ id: string; name: string }>>([])
 
-  // Fonction helper pour obtenir l'icône d'un espace
-  const getSpaceIcon = (type?: string) => {
-    const icons: Record<string, string> = {
-      SALON: '🛋️',
-      CUISINE: '🍳',
-      CHAMBRE: '🛏️',
-      SALLE_DE_BAIN: '🚿',
-      BUREAU: '💼',
-      ENTREE: '🚪',
-      COULOIR: '🚶',
-      AUTRE: '📦'
-    }
-    return icons[type || 'AUTRE'] || '📦'
-  }
 
   useEffect(() => {
     if (params.id) {
       fetchProject(params.id as string)
       fetchPrescriptions(params.id as string)
-      fetchSpaces(params.id as string)
+      fetchSpaces(params.id as string) 
     }
   }, [params.id])
+
+  const fetchSpaces = async (projectId: string) => {
+  try {
+    const response = await fetch(`/api/projects/${projectId}/spaces`)
+    if (response.ok) {
+      const data = await response.json()
+      setSpaces(data)
+    }
+  } catch (error) {
+    console.error('Erreur chargement espaces:', error)
+  }
+}
 
   const fetchProject = async (projectId: string) => {
     try {
@@ -161,37 +135,6 @@ export default function ProjectDetailPage() {
     }
   }
 
-  const fetchSpaceFiles = async (spaceId: string) => {
-  try {
-    const response = await fetch(`/api/spaces/${spaceId}/files`)
-    if (response.ok) {
-      const data = await response.json()
-      setSpaceFiles(prev => ({ ...prev, [spaceId]: data }))
-    }
-  } catch (error) {
-    console.error('Erreur chargement fichiers:', error)
-  }
-}
-
-const handleDeleteSpace = async (spaceId: string) => {
-  if (!confirm('Êtes-vous sûr de vouloir supprimer cet espace ?')) return
-
-  try {
-    const response = await fetch(`/api/spaces/${spaceId}`, {
-      method: 'DELETE'
-    })
-
-    if (response.ok) {
-      await fetchSpaces(project.id)
-      if (selectedSpace === spaceId) {
-        setSelectedSpace('ALL')
-      }
-    }
-  } catch (error) {
-    console.error('Erreur suppression espace:', error)
-  }
-}
-
   const fetchPrescriptions = async (projectId: string) => {
     try {
       setPrescriptionsLoading(true)
@@ -206,54 +149,6 @@ const handleDeleteSpace = async (spaceId: string) => {
       setPrescriptionsLoading(false)
     }
   }
-
-  const fetchSpaces = async (projectId: string) => {
-    try {
-      const response = await fetch(`/api/projects/${projectId}/spaces`)
-      if (response.ok) {
-        const data = await response.json()
-        setSpaces(data)
-      }
-    } catch (error) {
-      console.error('Erreur chargement espaces:', error)
-    }
-  }
-
-  const handleAddSpace = async () => {
-    if (!newSpace.name.trim() || !project) return
-
-    try {
-      const response = await fetch(`/api/projects/${project.id}/spaces`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: newSpace.name,
-          type: newSpace.type,
-          surfaceM2: newSpace.surfaceM2 ? parseFloat(newSpace.surfaceM2) : undefined
-        })
-      })
-
-      if (response.ok) {
-        await fetchSpaces(project.id)
-        setNewSpace({ name: '', type: 'AUTRE', surfaceM2: '' })
-        setShowAddSpace(false)
-      }
-    } catch (error) {
-      console.error('Erreur création espace:', error)
-    }
-  }
-
-  // Filtrer les prescriptions selon l'espace sélectionné
-  const filteredPrescriptionsBySpace = prescriptions.filter(prescription => {
-    if (selectedSpace === 'ALL') return true
-    return prescription.space?.id === selectedSpace
-  })
-
-  // Puis filtrer selon le statut
-  const filteredPrescriptions = filteredPrescriptionsBySpace.filter(prescription => {
-    if (statusFilter === 'ALL') return true
-    return prescription.status === statusFilter
-  })
 
   // Fonctions pour les commentaires
   const fetchComments = async (prescriptionId: string) => {
@@ -296,6 +191,21 @@ const handleDeleteSpace = async (spaceId: string) => {
     setModalOpen(true)
     setComments([])
     fetchComments(prescription.id)
+  }
+
+  // Helper functions
+  const getSpaceIcon = (type: string) => {
+    const icons: { [key: string]: string } = {
+      'SALON': '🛋️',
+      'CUISINE': '🍳',
+      'CHAMBRE': '🛏️',
+      'SALLE_DE_BAIN': '🚿',
+      'BUREAU': '💻',
+      'ENTREE': '🚪',
+      'COULOIR': '🏃',
+      'AUTRE': '📦'
+    }
+    return icons[type] || '📦'
   }
 
   if (loading) {
@@ -365,6 +275,7 @@ const handleDeleteSpace = async (spaceId: string) => {
           <div className="flex space-x-8">
             {[
               { id: 'overview', label: 'Vue d\'ensemble', icon: '📊' },
+              { id: 'spaces', label: 'Espaces', icon: '🏠' },
               { id: 'prescriptions', label: 'Prescriptions', icon: '🛋️' },
               { id: 'files', label: 'Fichiers & Plans', icon: '📁' },
               { id: 'budget', label: 'Budget', icon: '💰' },
@@ -562,277 +473,25 @@ const handleDeleteSpace = async (spaceId: string) => {
           </div>
         )}
 
-        {/* Onglet Prescriptions avec gestion des espaces */}
+        {/* Onglet Prescriptions (ex-Espaces) */}
         {activeTab === 'prescriptions' && (
-          <div className="space-y-6">
-            {prescriptionsLoading ? (
-              <div className="bg-white rounded-lg border border-slate-200 p-8 text-center">
-                <div className="w-8 h-8 border-2 border-slate-800 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                <p className="text-slate-600">Chargement des prescriptions...</p>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {/* Section Gestion des Espaces */}
-                <div className="bg-white rounded-lg border border-slate-200 p-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-semibold text-slate-900">
-                      🏠 Espaces du projet
-                    </h3>
-                    <button
-                      onClick={() => setShowAddSpace(!showAddSpace)}
-                      className="px-3 py-1.5 text-sm bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
-                    >
-                      {showAddSpace ? 'Annuler' : '+ Ajouter un espace'}
-                    </button>
-                  </div>
-
-                  {/* Formulaire ajout espace */}
-                  {showAddSpace && (
-                    <div className="mb-4 p-4 bg-slate-50 rounded-lg">
-                      <div className="grid gap-3 md:grid-cols-4">
-                        <input
-                          type="text"
-                          value={newSpace.name}
-                          onChange={(e) => setNewSpace({ ...newSpace, name: e.target.value })}
-                          placeholder="Nom de l'espace"
-                          className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800"
-                        />
-                        <select
-                          value={newSpace.type}
-                          onChange={(e) => setNewSpace({ ...newSpace, type: e.target.value })}
-                          className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800"
-                        >
-                          <option value="SALON">🛋️ Salon</option>
-                          <option value="CUISINE">🍳 Cuisine</option>
-                          <option value="CHAMBRE">🛏️ Chambre</option>
-                          <option value="SALLE_DE_BAIN">🚿 Salle de bain</option>
-                          <option value="BUREAU">💼 Bureau</option>
-                          <option value="ENTREE">🚪 Entrée</option>
-                          <option value="COULOIR">🚶 Couloir</option>
-                          <option value="AUTRE">📦 Autre</option>
-                        </select>
-                        <input
-                          type="number"
-                          value={newSpace.surfaceM2}
-                          onChange={(e) => setNewSpace({ ...newSpace, surfaceM2: e.target.value })}
-                          placeholder="Surface m²"
-                          step="0.1"
-                          className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800"
-                        />
-                        <button
-                          onClick={handleAddSpace}
-                          disabled={!newSpace.name.trim()}
-                          className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50"
-                        >
-                          Créer
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Liste des espaces */}
-                  <div className="flex flex-wrap gap-2">
-                    {spaces.length === 0 ? (
-                      <p className="text-slate-500 text-sm">Aucun espace créé. Commencez par ajouter des espaces.</p>
-                    ) : (
-                      spaces.map((space) => (
-                        <button
-                          key={space.id}
-                          onClick={() => setSelectedSpace(selectedSpace === space.id ? 'ALL' : space.id)}
-                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
-                            selectedSpace === space.id
-                              ? 'bg-slate-800 text-white'
-                              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                          }`}
-                        >
-                          <span>{getSpaceIcon(space.type)}</span>
-                          {space.name}
-                          {space.surfaceM2 && (
-                            <span className="text-xs opacity-75">({space.surfaceM2}m²)</span>
-                          )}
-                          {/* Compteur de prescriptions */}
-                          <span className="ml-1 px-1.5 py-0.5 bg-white bg-opacity-20 rounded text-xs">
-                            {prescriptions.filter(p => p.space?.id === space.id).length}
-                          </span>
-                        </button>
-                      ))
-                    )}
-                    
-                    {/* Bouton "Tous les espaces" */}
-                    {spaces.length > 0 && (
-                      <button
-                        onClick={() => setSelectedSpace('ALL')}
-                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          selectedSpace === 'ALL'
-                            ? 'bg-slate-800 text-white'
-                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                        }`}
-                      >
-                        Tous les espaces ({prescriptions.length})
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Section Prescriptions filtrées par espace */}
-                <div className="space-y-4">
-                  {/* Header avec titre et bouton d'ajout */}
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-semibold text-slate-900">
-                      Prescriptions {selectedSpace !== 'ALL' && `- ${spaces.find(s => s.id === selectedSpace)?.name}`} 
-                      ({filteredPrescriptionsBySpace.length})
-                    </h3>
-                    <button 
-                      className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors"
-                      onClick={() => {
-                        // TODO: Ouvrir modal ajout prescription
-                      }}
-                    >
-                      + Ajouter prescription
-                    </button>
-                  </div>
-
-                  {/* Filtres par statut */}
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      { key: 'ALL', label: 'Tous', count: filteredPrescriptionsBySpace.length },
-                      { key: 'EN_COURS', label: 'En cours', count: filteredPrescriptionsBySpace.filter(p => p.status === 'EN_COURS').length },
-                      { key: 'VALIDE', label: 'Validé', count: filteredPrescriptionsBySpace.filter(p => p.status === 'VALIDE').length },
-                      { key: 'COMMANDE', label: 'Commandé', count: filteredPrescriptionsBySpace.filter(p => p.status === 'COMMANDE').length },
-                      { key: 'LIVRE', label: 'Livré', count: filteredPrescriptionsBySpace.filter(p => p.status === 'LIVRE').length }
-                    ].map((filter) => (
-                      <button
-                        key={filter.key}
-                        onClick={() => setStatusFilter(filter.key)}
-                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          statusFilter === filter.key
-                            ? 'bg-slate-800 text-white'
-                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                        }`}
-                      >
-                        {filter.label} ({filter.count})
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Message si aucun résultat */}
-                  {filteredPrescriptions.length === 0 && (
-                    <div className="bg-slate-50 rounded-lg border-2 border-dashed border-slate-200 p-8 text-center">
-                      <span className="text-3xl mb-2 block">🔍</span>
-                      <p className="text-slate-600">
-                        {selectedSpace !== 'ALL' 
-                          ? `Aucune prescription dans cet espace`
-                          : `Aucune prescription ${statusFilter !== 'ALL' ? `avec le statut "${statusFilter.toLowerCase()}"` : ''}`
-                        }
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Liste des prescriptions filtrées */}
-                  <div className="grid gap-4">
-                    {filteredPrescriptions.map((prescription) => (
-                      <div
-                        key={prescription.id}
-                        className="bg-white rounded-lg border border-slate-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
-                        onClick={() => openModal(prescription)}
-                      >
-                        <div className="flex justify-between items-start mb-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <h4 className="text-lg font-semibold text-slate-900">
-                                {prescription.name}
-                              </h4>
-                              <span className="text-sm bg-slate-100 text-slate-700 px-2 py-1 rounded-full flex items-center gap-1">
-                                {getSpaceIcon(prescription.space?.type)} {prescription.space.name}
-                              </span>
-                              <div
-                                className="w-3 h-3 rounded-full"
-                                style={{ backgroundColor: prescription.category.colorHex || '#64748b' }}
-                                title={prescription.category.name}
-                              ></div>
-                            </div>
-                            
-                            <div className="text-slate-600 text-sm mb-2">
-                              {prescription.brand && (
-                                <span className="font-medium">{prescription.brand}</span>
-                              )}
-                              {prescription.brand && prescription.reference && ' • '}
-                              {prescription.reference && (
-                                <span className="font-mono">{prescription.reference}</span>
-                              )}
-                            </div>
-
-                            {prescription.description && (
-                              <p className="text-slate-700 text-sm mb-3">
-                                {prescription.description}
-                              </p>
-                            )}
-                          </div>
-
-                          <div className="text-right ml-4">
-                            <div className="text-lg font-semibold text-slate-900">
-                              {prescription.totalPrice?.toLocaleString('fr-FR')} €
-                            </div>
-                            <div className="text-sm text-slate-500">
-                              Qté: {prescription.quantity}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Statut et dates */}
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-4">
-                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                              prescription.status === 'LIVRE' ? 'bg-green-100 text-green-800' :
-                              prescription.status === 'COMMANDE' ? 'bg-blue-100 text-blue-800' :
-                              prescription.status === 'VALIDE' ? 'bg-purple-100 text-purple-800' :
-                              prescription.status === 'EN_COURS' ? 'bg-amber-100 text-amber-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {prescription.status === 'LIVRE' ? '✅ Livré' :
-                               prescription.status === 'COMMANDE' ? '📦 Commandé' :
-                               prescription.status === 'VALIDE' ? '👍 Validé' :
-                               prescription.status === 'EN_COURS' ? '⏳ En cours' :
-                               prescription.status}
-                            </span>
-
-                            {prescription.supplier && (
-                              <span className="text-sm text-slate-500">
-                                📍 {prescription.supplier}
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="text-sm text-slate-500">
-                            {prescription.deliveredAt ? 
-                              `Livré le ${new Date(prescription.deliveredAt).toLocaleDateString('fr-FR')}` :
-                             prescription.orderedAt ? 
-                              `Commandé le ${new Date(prescription.orderedAt).toLocaleDateString('fr-FR')}` :
-                             prescription.validatedAt ? 
-                              `Validé le ${new Date(prescription.validatedAt).toLocaleDateString('fr-FR')}` :
-                              `Créé le ${new Date(prescription.createdAt).toLocaleDateString('fr-FR')}`
-                            }
-                          </div>
-                        </div>
-
-                        {/* Notes si présentes */}
-                        {prescription.notes && (
-                          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                            <p className="text-blue-700 text-sm">
-                              <strong>💬 Note:</strong> {prescription.notes}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          <SpacesTab
+            projectId={project.id}
+            prescriptions={prescriptions}
+            onPrescriptionClick={openModal}
+            onPrescriptionsUpdated={() => fetchPrescriptions(project.id)}
+            onNavigateToLibrary={() => setShowLibraryModal(true)}
+          />
         )}
 
-        {activeTab !== 'overview' && activeTab !== 'prescriptions' && (
+        {activeTab === 'files' && (
+  <FilesPlansModule 
+    projectId={project.id}
+    spaces={spaces} // Vous devrez récupérer les espaces depuis votre API
+  />
+)}
+
+        {activeTab !== 'overview' && activeTab !== 'prescriptions' && activeTab !== 'files' && (
           <div className="bg-white rounded-lg border border-slate-200 p-8 text-center">
             <div className="text-6xl mb-4">🚧</div>
             <h3 className="text-xl font-semibold text-slate-900 mb-2">
@@ -856,7 +515,13 @@ const handleDeleteSpace = async (spaceId: string) => {
                   {selectedPrescription.name}
                 </h2>
                 <p className="text-slate-600 text-sm">
-                  {selectedPrescription.space.name} • {selectedPrescription.category.name}
+                  {selectedPrescription.space ? (
+                    <>
+                      {getSpaceIcon(selectedPrescription.space.type)} {selectedPrescription.space.name}
+                    </>
+                  ) : (
+                    '📦 Non assignée'
+                  )} • {selectedPrescription.category.name}
                 </p>
               </div>
               <button
@@ -1082,6 +747,41 @@ const handleDeleteSpace = async (spaceId: string) => {
                 <button
                   onClick={() => setModalOpen(false)}
                   className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors"
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal temporaire - Ajouter prescription */}
+      {showLibraryModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="text-center">
+              <div className="text-4xl mb-4">🛋️</div>
+              <h3 className="text-xl font-semibold text-slate-900 mb-2">
+                Ajouter une prescription
+              </h3>
+              <p className="text-slate-600 mb-6">
+                Cette fonctionnalité sera bientôt disponible ! En attendant, vous pouvez :
+              </p>
+              <div className="space-y-3">
+                <button 
+                  onClick={() => {
+                    setShowLibraryModal(false)
+                    // Redirection vers la bibliothèque existante si elle existe
+                    // router.push('/library') 
+                  }}
+                  className="w-full px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors"
+                >
+                  📚 Accéder à la bibliothèque
+                </button>
+                <button 
+                  onClick={() => setShowLibraryModal(false)}
+                  className="w-full px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
                 >
                   Fermer
                 </button>
