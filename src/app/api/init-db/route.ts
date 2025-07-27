@@ -1,7 +1,7 @@
 // src/app/api/init-db/route.ts
 // ⚠️ SUPPRIMER CETTE ROUTE APRÈS UTILISATION
 import { NextResponse } from 'next/server'
-import prisma from '@/lib/prisma'
+import { prisma } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 
 export async function POST(request: Request) {
