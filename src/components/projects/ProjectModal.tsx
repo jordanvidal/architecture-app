@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
+import { useToast } from '@/contexts/ToastContext'
 
 interface ProjectModalProps {
   isOpen: boolean
@@ -38,6 +39,8 @@ export default function ProjectModal({
   editingProject,
   isEditing = false
 }: ProjectModalProps) {
+  const { addToast } = useToast()
+  
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -142,8 +145,16 @@ export default function ProjectModal({
 
       onProjectSaved()
       onClose()
+      
+      // Toast de succès
+      addToast(
+        isEditing ? 'Projet modifié avec succès' : 'Projet créé avec succès',
+        'success'
+      )
     } catch (err) {
       setError('Une erreur est survenue. Veuillez réessayer.')
+      // Toast d'erreur
+      addToast('Erreur lors de l\'enregistrement du projet', 'error')
       console.error(err)
     } finally {
       setLoading(false)
@@ -167,8 +178,13 @@ export default function ProjectModal({
 
       onProjectSaved()
       onClose()
+      
+      // Toast de succès
+      addToast('Projet supprimé avec succès', 'success')
     } catch (err) {
       setError('Impossible de supprimer le projet.')
+      // Toast d'erreur
+      addToast('Erreur lors de la suppression du projet', 'error')
       console.error(err)
     } finally {
       setLoading(false)
@@ -179,25 +195,25 @@ export default function ProjectModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] md:max-h-[85vh] overflow-hidden mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center px-6 py-4 border-b border-slate-200">
-          <h2 className="text-xl font-semibold text-slate-900">
+        <div className="flex justify-between items-center px-4 md:px-6 py-3 md:py-4 border-b border-slate-200">
+          <h2 className="text-lg md:text-xl font-semibold text-slate-900">
             {isEditing ? 'Modifier le projet' : 'Nouveau projet'}
           </h2>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 transition-colors"
+            className="text-slate-400 hover:text-slate-600 transition-colors p-1"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex border-b border-slate-200">
+        {/* Tabs - Scrollable sur mobile */}
+        <div className="flex border-b border-slate-200 overflow-x-auto">
           <button
             onClick={() => setActiveTab('general')}
-            className={`px-6 py-3 text-sm font-medium transition-colors ${
+            className={`px-4 md:px-6 py-3 text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === 'general'
                 ? 'text-slate-900 border-b-2 border-slate-900'
                 : 'text-slate-500 hover:text-slate-700'
@@ -207,7 +223,7 @@ export default function ProjectModal({
           </button>
           <button
             onClick={() => setActiveTab('delivery')}
-            className={`px-6 py-3 text-sm font-medium transition-colors ${
+            className={`px-4 md:px-6 py-3 text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === 'delivery'
                 ? 'text-slate-900 border-b-2 border-slate-900'
                 : 'text-slate-500 hover:text-slate-700'
@@ -219,9 +235,9 @@ export default function ProjectModal({
 
         {/* Form */}
         <form onSubmit={handleSubmit}>
-          <div className="p-6 overflow-y-auto max-h-[60vh]">
+          <div className="p-4 md:p-6 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 180px)' }}>
             {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
                 {error}
               </div>
             )}
@@ -237,7 +253,7 @@ export default function ProjectModal({
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent text-sm md:text-base"
                   />
                 </div>
 
@@ -249,7 +265,7 @@ export default function ProjectModal({
                     rows={3}
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent resize-none"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent resize-none text-sm md:text-base"
                   />
                 </div>
 
@@ -263,7 +279,7 @@ export default function ProjectModal({
                       required
                       value={formData.clientName}
                       onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent text-sm md:text-base"
                     />
                   </div>
 
@@ -275,7 +291,7 @@ export default function ProjectModal({
                       type="email"
                       value={formData.clientEmail}
                       onChange={(e) => setFormData({ ...formData, clientEmail: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent text-sm md:text-base"
                     />
                   </div>
                 </div>
@@ -288,12 +304,12 @@ export default function ProjectModal({
                     type="text"
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent text-sm md:text-base"
                   />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
+                  <div className="md:col-span-1">
                     <label className="block text-sm font-medium text-slate-700 mb-1">
                       Budget total (€)
                     </label>
@@ -302,7 +318,7 @@ export default function ProjectModal({
                       step="0.01"
                       value={formData.budgetTotal}
                       onChange={(e) => setFormData({ ...formData, budgetTotal: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent text-sm md:text-base"
                     />
                   </div>
 
@@ -315,7 +331,7 @@ export default function ProjectModal({
                       required
                       value={formData.startDate}
                       onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent text-sm md:text-base"
                     />
                   </div>
 
@@ -327,7 +343,7 @@ export default function ProjectModal({
                       type="date"
                       value={formData.endDate}
                       onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent text-sm md:text-base"
                     />
                   </div>
                 </div>
@@ -343,7 +359,7 @@ export default function ProjectModal({
                       type="text"
                       value={formData.deliveryContactName}
                       onChange={(e) => setFormData({ ...formData, deliveryContactName: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent text-sm md:text-base"
                     />
                   </div>
 
@@ -355,7 +371,7 @@ export default function ProjectModal({
                       type="text"
                       value={formData.deliveryCompany}
                       onChange={(e) => setFormData({ ...formData, deliveryCompany: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent text-sm md:text-base"
                     />
                   </div>
                 </div>
@@ -368,12 +384,12 @@ export default function ProjectModal({
                     type="text"
                     value={formData.deliveryAddress}
                     onChange={(e) => setFormData({ ...formData, deliveryAddress: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent text-sm md:text-base"
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="sm:col-span-2 md:col-span-1">
                     <label className="block text-sm font-medium text-slate-700 mb-1">
                       Ville
                     </label>
@@ -381,7 +397,7 @@ export default function ProjectModal({
                       type="text"
                       value={formData.deliveryCity}
                       onChange={(e) => setFormData({ ...formData, deliveryCity: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent text-sm md:text-base"
                     />
                   </div>
 
@@ -393,11 +409,11 @@ export default function ProjectModal({
                       type="text"
                       value={formData.deliveryZipCode}
                       onChange={(e) => setFormData({ ...formData, deliveryZipCode: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent text-sm md:text-base"
                     />
                   </div>
 
-                  <div>
+                  <div className="sm:col-span-2 md:col-span-1">
                     <label className="block text-sm font-medium text-slate-700 mb-1">
                       Pays
                     </label>
@@ -405,12 +421,12 @@ export default function ProjectModal({
                       type="text"
                       value={formData.deliveryCountry}
                       onChange={(e) => setFormData({ ...formData, deliveryCountry: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent text-sm md:text-base"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
                       Code d'accès
@@ -419,7 +435,7 @@ export default function ProjectModal({
                       type="text"
                       value={formData.deliveryAccessCode}
                       onChange={(e) => setFormData({ ...formData, deliveryAccessCode: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent text-sm md:text-base"
                     />
                   </div>
 
@@ -431,7 +447,7 @@ export default function ProjectModal({
                       type="text"
                       value={formData.deliveryFloor}
                       onChange={(e) => setFormData({ ...formData, deliveryFloor: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent text-sm md:text-base"
                     />
                   </div>
 
@@ -443,7 +459,7 @@ export default function ProjectModal({
                       type="text"
                       value={formData.deliveryDoorCode}
                       onChange={(e) => setFormData({ ...formData, deliveryDoorCode: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent text-sm md:text-base"
                     />
                   </div>
                 </div>
@@ -456,7 +472,7 @@ export default function ProjectModal({
                     rows={3}
                     value={formData.deliveryInstructions}
                     onChange={(e) => setFormData({ ...formData, deliveryInstructions: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent resize-none"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent resize-none text-sm md:text-base"
                   />
                 </div>
               </div>
@@ -464,32 +480,32 @@ export default function ProjectModal({
           </div>
 
           {/* Footer */}
-          <div className="flex justify-between items-center px-6 py-4 border-t border-slate-200 bg-slate-50">
-            <div>
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 px-4 md:px-6 py-3 md:py-4 border-t border-slate-200 bg-slate-50">
+            <div className="w-full sm:w-auto">
               {isEditing && (
                 <button
                   type="button"
                   onClick={handleDelete}
                   disabled={loading}
-                  className="px-4 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                  className="w-full sm:w-auto px-4 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 text-sm md:text-base"
                 >
                   Supprimer
                 </button>
               )}
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-3 w-full sm:w-auto">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={loading}
-                className="px-4 py-2 text-slate-600 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                className="flex-1 sm:flex-initial px-4 py-2 text-slate-600 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors text-sm md:text-base"
               >
                 Annuler
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50"
+                className="flex-1 sm:flex-initial px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50 text-sm md:text-base"
               >
                 {loading ? 'Enregistrement...' : (isEditing ? 'Modifier' : 'Créer')}
               </button>
