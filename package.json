@@ -7,7 +7,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "seed": "ts-node prisma/seed.ts"
+    "seed": "ts-node prisma/seed.ts",
+    "db:reset": "npx prisma migrate reset --skip-seed",
+    "db:seed": "node scripts/seed-all.js",
+    "db:fresh": "npm run db:reset && npm run db:seed",
+    "backup": "node scripts/backup-database.js",
+    "restore": "psql $DATABASE_URL < ",
+    "db:dump": "pg_dump $DATABASE_URL > backups/manual_backup.sql"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
