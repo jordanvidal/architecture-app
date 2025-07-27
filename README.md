@@ -1,36 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Application Architecture d'Intérieur
 
-## Getting Started
+Application web pour la gestion de projets d'architecture d'intérieur.
 
-First, run the development server:
+## 🚀 Installation
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+\`\`\`bash
+# Cloner le repo
+git clone https://github.com/VOTRE-USERNAME/VOTRE-REPO.git
+cd VOTRE-REPO
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+# Installer les dépendances
+npm install
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+# Configurer l'environnement
+cp .env.example .env
+# Éditer .env avec vos valeurs
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# Configurer la base de données
+npx prisma migrate dev
+npx prisma generate
 
-## Learn More
+# Seed la base de données
+npm run seed
+\`\`\`
 
-To learn more about Next.js, take a look at the following resources:
+## 📁 Structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `/app` - Pages Next.js (App Router)
+- `/components` - Composants React
+- `/prisma` - Schéma et migrations
+- `/scripts` - Scripts utilitaires
+- `/public/uploads` - Fichiers uploadés (ignoré par git)
+- `/backups` - Backups de base de données (ignoré par git)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🛠️ Scripts disponibles
 
-## Deploy on Vercel
+\`\`\`bash
+npm run dev          # Lancer en développement
+npm run build        # Build production
+npm run seed         # Seed toute la base
+npm run backup       # Backup de la base
+\`\`\`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 📦 Fonctionnalités
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- ✅ Gestion de projets
+- ✅ Espaces par projet
+- ✅ Prescriptions
+- ✅ Upload de fichiers (plans, 3D, etc.)
+- ✅ Bibliothèque de ressources
+- ✅ Système de backup
