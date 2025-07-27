@@ -275,7 +275,6 @@ export default function ProjectDetailPage() {
           <div className="flex space-x-8">
             {[
               { id: 'overview', label: 'Vue d\'ensemble', icon: '📊' },
-              { id: 'spaces', label: 'Espaces', icon: '🏠' },
               { id: 'prescriptions', label: 'Prescriptions', icon: '🛋️' },
               { id: 'files', label: 'Fichiers & Plans', icon: '📁' },
               { id: 'budget', label: 'Budget', icon: '💰' },
