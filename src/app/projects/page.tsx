@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import ProjectModal from '@/components/projects/ProjectModal'
 
 interface Project {
   id: string
@@ -25,6 +26,9 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterStatus, setFilterStatus] = useState('ALL')
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editingProject, setEditingProject] = useState<Project | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -47,6 +51,18 @@ export default function ProjectsPage() {
       setLoading(false)
     }
   }
+
+const handleNewProject = () => {
+  setEditingProject(null)
+  setIsEditing(false)
+  setModalOpen(true)
+}
+
+const handleEditProject = (project: Project) => {
+  setEditingProject(project)
+  setIsEditing(true)
+  setModalOpen(true)
+}
 
   const filteredProjects = projects.filter(project => {
     const matchesSearch = searchQuery === '' || 
@@ -85,7 +101,7 @@ export default function ProjectsPage() {
               </p>
             </div>
             <button 
-              onClick={() => {/* TODO: Ouvrir modale création */}}
+              onClick={handleNewProject}
               className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors"
             >
               + Nouveau projet
@@ -144,7 +160,7 @@ export default function ProjectsPage() {
             </p>
             {(!searchQuery && filterStatus === 'ALL') && (
               <button 
-                onClick={() => {/* TODO: Ouvrir modale création */}}
+                onClick={handleNewProject}
                 className="px-6 py-3 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors"
               >
                 Créer un projet
@@ -154,58 +170,86 @@ export default function ProjectsPage() {
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {filteredProjects.map((project) => (
-              <Link 
+              <div 
                 key={project.id}
-                href={`/projects/${project.id}`}
-                className="bg-white rounded-lg border border-slate-200 p-6 hover:shadow-lg transition-shadow"
+                className="bg-white rounded-lg border border-slate-200 p-6 hover:shadow-lg transition-shadow relative group"
               >
-                <div className="flex justify-between items-start mb-4">
-                  <h3 className="text-lg font-semibold text-slate-900">
-                    {project.name}
-                  </h3>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    project.status === 'EN_COURS' ? 'bg-amber-100 text-amber-800' :
-                    project.status === 'TERMINE' ? 'bg-green-100 text-green-800' :
-                    project.status === 'EN_ATTENTE' ? 'bg-blue-100 text-blue-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {project.status === 'EN_COURS' ? 'En cours' :
-                     project.status === 'TERMINE' ? 'Terminé' :
-                     project.status === 'EN_ATTENTE' ? 'En attente' :
-                     project.status}
-                  </span>
-                </div>
-                
-                <p className="text-slate-600 mb-4">
-                  {project.clientName}
-                </p>
-                
-                {/* Progress bar */}
-                <div className="mb-4">
-                  <div className="flex justify-between text-sm text-slate-600 mb-1">
-                    <span>Avancement</span>
-                    <span>{project.progressPercentage}%</span>
+                {/* Bouton d'édition */}
+                <button
+                  onClick={(e) => {
+                    e.preventDefault()
+                    handleEditProject(project)
+                  }}
+                  className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity p-2 bg-white rounded-lg shadow-md hover:shadow-lg"
+                  title="Modifier le projet"
+                >
+                  <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                </button>
+
+                <Link href={`/projects/${project.id}`}>
+                  <div className="flex justify-between items-start mb-4">
+                    <h3 className="text-lg font-semibold text-slate-900">
+                      {project.name}
+                    </h3>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      project.status === 'EN_COURS' ? 'bg-amber-100 text-amber-800' :
+                      project.status === 'TERMINE' ? 'bg-green-100 text-green-800' :
+                      project.status === 'EN_ATTENTE' ? 'bg-blue-100 text-blue-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {project.status === 'EN_COURS' ? 'En cours' :
+                       project.status === 'TERMINE' ? 'Terminé' :
+                       project.status === 'EN_ATTENTE' ? 'En attente' :
+                       project.status}
+                    </span>
                   </div>
-                  <div className="w-full bg-slate-200 rounded-full h-2">
-                    <div 
-                      className="bg-slate-800 h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${project.progressPercentage}%` }}
-                    />
+                  
+                  <p className="text-slate-600 mb-4">
+                    {project.clientName}
+                  </p>
+                  
+                  {/* Progress bar */}
+                  <div className="mb-4">
+                    <div className="flex justify-between text-sm text-slate-600 mb-1">
+                      <span>Avancement</span>
+                      <span>{project.progressPercentage}%</span>
+                    </div>
+                    <div className="w-full bg-slate-200 rounded-full h-2">
+                      <div 
+                        className="bg-slate-800 h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${project.progressPercentage}%` }}
+                      />
+                    </div>
                   </div>
-                </div>
-                
-                {/* Budget */}
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">Budget</span>
-                  <span className="font-medium text-slate-900">
-                    {project.budgetTotal?.toLocaleString('fr-FR')} €
-                  </span>
-                </div>
-              </Link>
+                  
+                  {/* Budget */}
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-600">Budget</span>
+                    <span className="font-medium text-slate-900">
+                      {project.budgetTotal?.toLocaleString('fr-FR')} €
+                    </span>
+                  </div>
+                </Link>
+              </div>
             ))}
           </div>
         )}
       </main>
+
+      {/* Project Modal */}
+      <ProjectModal
+        isOpen={modalOpen}
+        onClose={() => {
+          setModalOpen(false)
+          setEditingProject(null)
+          setIsEditing(false)
+        }}
+        onProjectSaved={fetchProjects}
+        editingProject={editingProject || undefined}
+        isEditing={isEditing}
+      />
     </div>
   )
 }

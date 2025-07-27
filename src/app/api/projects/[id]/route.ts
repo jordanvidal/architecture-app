@@ -1,36 +1,30 @@
-// src/app/api/projects/[id]/route.ts - VERSION COMPLÈTE
-import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '../../../../lib/auth'
-import prisma from '../../../../lib/prisma'
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import prisma from '@/lib/prisma'
+import { authOptions } from '@/lib/auth'
 
+// GET /api/projects/[id]
 export async function GET(
-  request: Request,
-  context: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
-    if (!session) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
-
-    const params = await context.params
 
     const project = await prisma.project.findUnique({
       where: { id: params.id },
       include: {
         creator: {
           select: {
+            id: true,
+            email: true,
             firstName: true,
-            lastName: true,
-            email: true
+            lastName: true
           }
-        },
-        spaces: {
-          orderBy: { name: 'asc' }
-        },
-        prescriptions: true
+        }
       }
     })
 
@@ -38,8 +32,13 @@ export async function GET(
       return NextResponse.json({ error: 'Projet non trouvé' }, { status: 404 })
     }
 
-    // Transformer pour le front avec tous les champs
-    const transformedProject = {
+    // Vérifier que l'utilisateur a accès au projet
+    if (project.creator.email !== session.user.email) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 403 })
+    }
+
+    // Formater les données pour le frontend
+    const formattedProject = {
       id: project.id,
       name: project.name,
       description: project.description,
@@ -55,11 +54,6 @@ export async function GET(
       imageUrl: project.image_url,
       createdAt: project.created_at,
       updatedAt: project.updated_at,
-      creator: project.creator,
-      spaces: project.spaces,
-      prescriptions: project.prescriptions,
-      
-      // Adresse de livraison
       deliveryAddress: project.delivery_contact_name ? {
         contactName: project.delivery_contact_name,
         company: project.delivery_company,
@@ -72,17 +66,131 @@ export async function GET(
         doorCode: project.delivery_door_code,
         instructions: project.delivery_instructions
       } : null,
-      
-      // Adresses de facturation
-      billingAddresses: project.billing_addresses ? JSON.parse(project.billing_addresses as string) : []
+      billingAddresses: project.billing_addresses || []
     }
 
-    return NextResponse.json(transformedProject)
+    return NextResponse.json(formattedProject)
   } catch (error) {
-    console.error('❌ Erreur:', error)
-    return NextResponse.json({ 
-      error: 'Erreur serveur',
-      details: error.message
-    }, { status: 500 })
+    console.error('Erreur GET project:', error)
+    return NextResponse.json(
+      { error: 'Erreur serveur' },
+      { status: 500 }
+    )
+  }
+}
+
+// PATCH /api/projects/[id]
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    }
+
+    const project = await prisma.project.findUnique({
+      where: { id: params.id },
+      include: {
+        creator: {
+          select: { email: true }
+        }
+      }
+    })
+
+    if (!project) {
+      return NextResponse.json({ error: 'Projet non trouvé' }, { status: 404 })
+    }
+
+    if (project.creator.email !== session.user.email) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 403 })
+    }
+
+    const data = await request.json()
+
+    // Préparer les données pour la mise à jour
+    const updateData: any = {}
+
+    if (data.name !== undefined) updateData.name = data.name
+    if (data.description !== undefined) updateData.description = data.description
+    if (data.clientName !== undefined) updateData.client_name = data.clientName
+    if (data.clientEmail !== undefined) updateData.client_email = data.clientEmail
+    if (data.address !== undefined) updateData.address = data.address
+    if (data.budgetTotal !== undefined) updateData.budget_total = data.budgetTotal
+    if (data.startDate !== undefined) updateData.start_date = data.startDate
+    if (data.endDate !== undefined) updateData.end_date = data.endDate
+    if (data.status !== undefined) updateData.status = data.status
+
+    // Mise à jour des champs de livraison
+    if (data.deliveryContactName !== undefined) updateData.delivery_contact_name = data.deliveryContactName
+    if (data.deliveryCompany !== undefined) updateData.delivery_company = data.deliveryCompany
+    if (data.deliveryAddress !== undefined) updateData.delivery_address = data.deliveryAddress
+    if (data.deliveryCity !== undefined) updateData.delivery_city = data.deliveryCity
+    if (data.deliveryZipCode !== undefined) updateData.delivery_zip_code = data.deliveryZipCode
+    if (data.deliveryCountry !== undefined) updateData.delivery_country = data.deliveryCountry
+    if (data.deliveryAccessCode !== undefined) updateData.delivery_access_code = data.deliveryAccessCode
+    if (data.deliveryFloor !== undefined) updateData.delivery_floor = data.deliveryFloor
+    if (data.deliveryDoorCode !== undefined) updateData.delivery_door_code = data.deliveryDoorCode
+    if (data.deliveryInstructions !== undefined) updateData.delivery_instructions = data.deliveryInstructions
+
+    const updatedProject = await prisma.project.update({
+      where: { id: params.id },
+      data: updateData
+    })
+
+    return NextResponse.json({
+      id: updatedProject.id,
+      name: updatedProject.name,
+      status: updatedProject.status
+    })
+  } catch (error) {
+    console.error('Erreur PATCH project:', error)
+    return NextResponse.json(
+      { error: 'Erreur lors de la mise à jour' },
+      { status: 500 }
+    )
+  }
+}
+
+// DELETE /api/projects/[id]
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    }
+
+    const project = await prisma.project.findUnique({
+      where: { id: params.id },
+      include: {
+        creator: {
+          select: { email: true }
+        }
+      }
+    })
+
+    if (!project) {
+      return NextResponse.json({ error: 'Projet non trouvé' }, { status: 404 })
+    }
+
+    if (project.creator.email !== session.user.email) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 403 })
+    }
+
+    await prisma.project.delete({
+      where: { id: params.id }
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Erreur DELETE project:', error)
+    return NextResponse.json(
+      { error: 'Erreur lors de la suppression' },
+      { status: 500 }
+    )
   }
 }
