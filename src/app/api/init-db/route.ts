@@ -1,8 +1,46 @@
 // src/app/api/init-db/route.ts
-// ⚠️ SUPPRIMER CETTE ROUTE APRÈS UTILISATION
+// VERSION TEMPORAIRE POUR DEBUGGER
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+
+export async function GET() {
+  // Test simple de connexion sans authentification
+  try {
+    const dbUrl = process.env.DATABASE_URL || 'NOT SET'
+    const directUrl = process.env.DIRECT_URL || 'NOT SET'
+    
+    // Masquer le mot de passe pour le log
+    const maskPassword = (url: string) => {
+      if (url === 'NOT SET') return url
+      return url.replace(/:([^@]+)@/, ':****@')
+    }
+    
+    console.log('DATABASE_URL:', maskPassword(dbUrl))
+    console.log('DIRECT_URL:', maskPassword(directUrl))
+    
+    const prisma = new PrismaClient()
+    
+    // Test de connexion
+    const userCount = await prisma.user.count()
+    
+    await prisma.$disconnect()
+    
+    return NextResponse.json({
+      success: true,
+      message: 'Connexion DB réussie!',
+      userCount,
+      dbConfigured: dbUrl !== 'NOT SET',
+      directUrlConfigured: directUrl !== 'NOT SET'
+    })
+  } catch (error: any) {
+    return NextResponse.json({
+      success: false,
+      error: error.message,
+      code: error.code
+    }, { status: 500 })
+  }
+}
 
 export async function POST(request: Request) {
   try {
@@ -12,6 +50,8 @@ export async function POST(request: Request) {
     if (secret !== 'votre-secret-temporaire-12345') {
       return NextResponse.json({ message: 'Non autorisé' }, { status: 401 })
     }
+    
+    const prisma = new PrismaClient()
     
     // Hasher le mot de passe
     const hashedPassword = await bcrypt.hash('Demo2024!', 10)
@@ -46,6 +86,8 @@ export async function POST(request: Request) {
         create: cat,
       })
     }
+    
+    await prisma.$disconnect()
     
     return NextResponse.json({ 
       message: 'Base de données initialisée avec succès! Utilisateur: marie.dubois@agence.com / Mot de passe: Demo2024!'
