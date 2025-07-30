@@ -5,7 +5,6 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
 model Account {
@@ -48,6 +47,7 @@ model User {
   updatedAt     DateTime          @updatedAt
   accounts      Account[]
   sessions      Session[]
+  contacts      Contact[]
   prescriptions Prescription[]
   uploadedFiles ProjectFile[]
   projects      Project[]
@@ -91,6 +91,15 @@ model Project {
   delivery_door_code    String?
   delivery_instructions String?
   billing_addresses     Json?
+  clientEmails          String[]
+  deliveryElevator      Boolean        @default(true)
+  deliveryFloorInfo     String?
+  deliveryPhotos        String[]
+  exteriorSurfaceM2     Float?
+  exteriorType          ExteriorType?
+  hasExterior           Boolean        @default(false)
+  projectType           ProjectType?
+  surfaceM2             Float?
   prescriptions         Prescription[]
   files                 ProjectFile[]
   creator               User           @relation(fields: [created_by], references: [id])
@@ -100,18 +109,19 @@ model Project {
 }
 
 model Space {
-  id            String         @id @default(cuid())
-  name          String
-  type          SpaceType      @default(AUTRE)
-  description   String?
-  surfaceM2     Float?
-  projectId     String
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  prescriptions Prescription[]
-  projectFiles  ProjectFile[]
-  spaceFiles    SpaceFile[]
-  project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  id                 String              @id @default(cuid())
+  name               String
+  type               SpaceType           @default(AUTRE)
+  description        String?
+  surfaceM2          Float?
+  projectId          String
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  prescriptionSpaces PrescriptionSpace[]
+  prescriptions      Prescription[]
+  projectFiles       ProjectFile[]
+  spaceFiles         SpaceFile[]
+  project            Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@map("spaces")
 }
@@ -149,7 +159,10 @@ model Prescription {
   createdBy   String
   createdAt   DateTime             @default(now())
   updatedAt   DateTime             @updatedAt
+  contactId   String?
+  spaces      PrescriptionSpace[]
   category    PrescriptionCategory @relation(fields: [categoryId], references: [id])
+  contact     Contact?             @relation("ContactPrescriptions", fields: [contactId], references: [id])
   creator     User                 @relation(fields: [createdBy], references: [id])
   project     Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
   space       Space?               @relation(fields: [spaceId], references: [id])
@@ -158,25 +171,35 @@ model Prescription {
 }
 
 model ResourceLibrary {
-  id           String               @id @default(cuid())
-  name         String
-  description  String?
-  categoryId   String
-  brand        String?
-  reference    String?
-  productUrl   String?
-  priceMin     Float?
-  priceMax     Float?
-  supplier     String?
-  availability String?
-  imageUrl     String?
-  tags         String[]
-  isFavorite   Boolean              @default(false)
-  createdBy    String
-  createdAt    DateTime             @default(now())
-  updatedAt    DateTime             @updatedAt
-  category     PrescriptionCategory @relation(fields: [categoryId], references: [id])
-  creator      User                 @relation(fields: [createdBy], references: [id])
+  id             String               @id @default(cuid())
+  name           String
+  description    String?
+  categoryId     String
+  brand          String?
+  reference      String?
+  productUrl     String?
+  priceMin       Float?
+  priceMax       Float?
+  supplier       String?
+  availability   String?
+  imageUrl       String?
+  tags           String[]
+  isFavorite     Boolean              @default(false)
+  createdBy      String
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  categoryPath   String[]
+  contactId      String?
+  countryOrigin  String?
+  dimensions     Json?
+  images         String[]
+  mainImageUrl   String?
+  pricePro       Float?
+  technicalSheet String?
+  price          Float?
+  category       PrescriptionCategory @relation(fields: [categoryId], references: [id])
+  contact        Contact?             @relation("ContactResources", fields: [contactId], references: [id])
+  creator        User                 @relation(fields: [createdBy], references: [id])
 
   @@map("resource_library")
 }
@@ -219,6 +242,52 @@ model SpaceFile {
   uploader    User     @relation(fields: [uploadedBy], references: [id])
 
   @@map("space_files")
+}
+
+model Contact {
+  id            String            @id @default(cuid())
+  name          String
+  company       String?
+  email         String?
+  phone         String?
+  website       String?
+  address       String?
+  notes         String?
+  contactType   ContactType
+  isSupplier    Boolean           @default(false)
+  isReseller    Boolean           @default(false)
+  createdBy     String
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  creator       User              @relation(fields: [createdBy], references: [id])
+  prescriptions Prescription[]    @relation("ContactPrescriptions")
+  resources     ResourceLibrary[] @relation("ContactResources")
+
+  @@map("contacts")
+}
+
+model Brand {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  website   String?
+  country   String?
+  logo      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("brands")
+}
+
+model PrescriptionSpace {
+  id             String       @id @default(cuid())
+  prescriptionId String
+  spaceId        String
+  quantity       Int          @default(1)
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  space          Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  @@unique([prescriptionId, spaceId])
+  @@map("prescription_spaces")
 }
 
 enum UserRole {
@@ -277,4 +346,30 @@ enum FileCategory {
   PHOTOS_CHANTIER
   DOCUMENTS
   AUTRES
+}
+
+enum ContactType {
+  FOURNISSEUR
+  REVENDEUR
+  MARQUE
+  ARTISAN
+  AUTRE
+}
+
+enum ProjectType {
+  HOTEL
+  RESIDENTIEL_APPARTEMENT
+  RESIDENTIEL_MAISON
+  RESIDENTIEL_IMMEUBLE
+  RESTAURANT
+  RETAIL
+  BUREAUX
+  SCENOGRAPHIE
+  AUTRE
+}
+
+enum ExteriorType {
+  JARDIN
+  TERRASSE
+  BALCON
 }

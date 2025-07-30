@@ -329,14 +329,10 @@ export default function LibraryView({ projects }: LibraryViewProps) {
                 )}
                 
                 {/* Prix */}
-                {(resource.priceMin || resource.priceMax) && (
-                  <div className="text-base font-semibold text-slate-900 mb-3">
-                    {resource.priceMin && resource.priceMax ? (
-                      <>{resource.priceMin}€ - {resource.priceMax}€</>
-                    ) : (
-                      <>{resource.priceMin || resource.priceMax}€</>
-                    )}
-                  </div>
+                {resource.price && (
+                <p className="text-sm font-medium text-slate-900">
+                  {resource.price.toFixed(2)}€ TTC
+                </p>
                 )}
 
                 {/* Actions - Visible sur mobile, au hover sur desktop */}
@@ -397,14 +393,10 @@ export default function LibraryView({ projects }: LibraryViewProps) {
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                  {(resource.priceMin || resource.priceMax) && (
-                    <div className="text-base font-semibold text-slate-900">
-                      {resource.priceMin && resource.priceMax ? (
-                        <>{resource.priceMin}€ - {resource.priceMax}€</>
-                      ) : (
-                        <>{resource.priceMin || resource.priceMax}€</>
-                      )}
-                    </div>
+                  {resource.price && (
+                    <p className="text-sm font-medium text-slate-900">
+                      {resource.price.toFixed(2)}€ TTC
+                    </p>
                   )}
                   
                   <div className="flex gap-2 w-full sm:w-auto">

@@ -249,10 +249,14 @@ export default function ProjectsPage() {
           setEditingProject(null)
           setIsEditing(false)
         }}
-        onProjectSaved={fetchProjects}
-        editingProject={editingProject || undefined}
-        isEditing={isEditing}
-      />
+        project={editingProject}
+        onProjectSaved={() => {
+          fetchProjects() // ou la fonction que vous utilisez pour recharger
+          setModalOpen(false)
+          setEditingProject(null)
+          setIsEditing(false)
+        }}
+/>
     </div>
   )
 }

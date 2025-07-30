@@ -13,6 +13,7 @@ export default function Navbar() {
   const navigation = [
     { name: 'Projets', href: '/projects', icon: '📊' },
     { name: 'Bibliothèque', href: '/library', icon: '📚' },
+    { name: 'Contacts', href: '/contacts', icon: '👥' },
   ]
 
   const isActive = (href: string) => {

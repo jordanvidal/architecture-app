@@ -1,16 +1,10 @@
 import { useState, useEffect } from 'react'
 
-interface Project {
-  id: string
-  name: string
-  clientName: string
-}
-
 interface AddToProjectModalProps {
   isOpen: boolean
   onClose: () => void
   resource: any
-  projects: Project[]
+  projects: any[]
 }
 
 export default function AddToProjectModal({
@@ -19,65 +13,89 @@ export default function AddToProjectModal({
   resource,
   projects
 }: AddToProjectModalProps) {
-  const [targetProjectId, setTargetProjectId] = useState<string>('')
-  const [selectedSpaceId, setSelectedSpaceId] = useState<string>('')
-  const [projectSpaces, setProjectSpaces] = useState<any[]>([])
   const [prescriptionData, setPrescriptionData] = useState({
+    projectId: '',
+    spaceId: '',
     quantity: 1,
+    unitPrice: resource?.price || 0,
+    totalPrice: resource?.price || 0,
     notes: ''
   })
+  
+  const [spaces, setSpaces] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (isOpen) {
-      setTargetProjectId('')
-      setSelectedSpaceId('')
-      setProjectSpaces([])
-      setPrescriptionData({ quantity: 1, notes: '' })
+    if (prescriptionData.projectId) {
+      fetchSpaces(prescriptionData.projectId)
     }
-  }, [isOpen])
+  }, [prescriptionData.projectId])
 
-  const fetchProjectSpaces = async (projectId: string) => {
+  useEffect(() => {
+    if (resource) {
+      setPrescriptionData(prev => ({
+        ...prev,
+        unitPrice: resource.price || 0,
+        totalPrice: (resource.price || 0) * prev.quantity
+      }))
+    }
+  }, [resource])
+
+  const fetchSpaces = async (projectId: string) => {
     try {
       const response = await fetch(`/api/projects/${projectId}/spaces`)
       if (response.ok) {
         const data = await response.json()
-        setProjectSpaces(data)
+        setSpaces(data)
       }
     } catch (error) {
       console.error('Erreur chargement espaces:', error)
     }
   }
 
-  const handleCreatePrescription = async () => {
-    if (!targetProjectId || !resource) return
+  const handleQuantityChange = (value: number) => {
+    setPrescriptionData(prev => ({
+      ...prev,
+      quantity: value,
+      totalPrice: (resource.price || 0) * value
+    }))
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
 
     try {
-      const response = await fetch('/api/prescriptions', {
+      const prescription = {
+        name: resource.name,
+        description: resource.description,
+        brand: resource.brand,
+        reference: resource.reference,
+        productUrl: resource.productUrl,
+        quantity: prescriptionData.quantity,
+        unitPrice: resource.price || 0,
+        totalPrice: (resource.price || 0) * prescriptionData.quantity,
+        supplier: resource.supplier,
+        status: 'EN_COURS',
+        projectId: prescriptionData.projectId,
+        spaceId: prescriptionData.spaceId || null,
+        categoryId: resource.categoryId,
+        notes: prescriptionData.notes
+      }
+
+      const response = await fetch(`/api/projects/${prescriptionData.projectId}/prescriptions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          projectId: targetProjectId,
-          spaceId: selectedSpaceId,
-          categoryId: resource.categoryId,
-          name: resource.name,
-          description: resource.description,
-          brand: resource.brand,
-          reference: resource.reference,
-          productUrl: resource.productUrl,
-          quantity: prescriptionData.quantity,
-          unitPrice: resource.priceMin || resource.priceMax,
-          totalPrice: (resource.priceMin || resource.priceMax || 0) * prescriptionData.quantity,
-          supplier: resource.supplier,
-          notes: prescriptionData.notes
-        })
+        body: JSON.stringify(prescription)
       })
 
       if (response.ok) {
-        alert(`✅ Prescription "${resource.name}" ajoutée au projet !`)
         onClose()
       }
     } catch (error) {
-      console.error('Erreur création prescription:', error)
+      console.error('Erreur:', error)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -85,63 +103,55 @@ export default function AddToProjectModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl max-w-lg w-full shadow-2xl">
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-semibold text-slate-900">
-              Ajouter à un projet
-            </h3>
-            <button
-              onClick={onClose}
-              className="text-slate-400 hover:text-slate-600"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
+      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+          <h2 className="text-xl font-semibold text-slate-900">
+            Ajouter au projet
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-600 transition-colors"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
 
-          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 mb-6 border border-blue-200">
-            <div className="flex items-center gap-3">
-              <div 
-                className="w-4 h-4 rounded-full" 
-                style={{ backgroundColor: resource.category?.colorHex || '#64748b' }}
-              ></div>
-              <div>
-                <h4 className="font-semibold text-slate-900">{resource.name}</h4>
-                <p className="text-sm text-slate-600">
-                  {resource.brand} • {resource.category?.name}
-                </p>
-                {(resource.priceMin || resource.priceMax) && (
-                  <p className="text-sm font-medium text-blue-700">
-                    {resource.priceMin && resource.priceMax && resource.priceMin !== resource.priceMax
-                      ? `${resource.priceMin} - ${resource.priceMax} €`
-                      : `${resource.priceMin || resource.priceMax} €`
-                    }
-                  </p>
-                )}
-              </div>
-            </div>
+        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+          {/* Info ressource */}
+          <div className="bg-slate-50 rounded-lg p-4 mb-6">
+            <h3 className="font-medium text-slate-900 mb-2">{resource.name}</h3>
+            {resource.brand && (
+              <p className="text-sm text-slate-600 mb-1">{resource.brand}</p>
+            )}
+            {resource.reference && (
+              <p className="text-sm text-slate-500">Réf: {resource.reference}</p>
+            )}
+            {resource.price && (
+              <p className="text-sm font-medium text-slate-900 mt-2">
+                {resource.price.toFixed(2)}€ TTC
+              </p>
+            )}
           </div>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-sm font-medium text-slate-700 mb-1">
                 Projet *
               </label>
               <select
-                value={targetProjectId}
-                onChange={(e) => {
-                  setTargetProjectId(e.target.value)
-                  setSelectedSpaceId('')
-                  if (e.target.value) {
-                    fetchProjectSpaces(e.target.value)
-                  }
-                }}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+                value={prescriptionData.projectId}
+                onChange={(e) => setPrescriptionData({ 
+                  ...prescriptionData, 
+                  projectId: e.target.value,
+                  spaceId: '' 
+                })}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent"
               >
-                <option value="">Choisir un projet</option>
-                {projects.map((project: any) => (
+                <option value="">Sélectionner un projet</option>
+                {projects.map((project) => (
                   <option key={project.id} value={project.id}>
                     {project.name} - {project.clientName}
                   </option>
@@ -149,74 +159,95 @@ export default function AddToProjectModal({
               </select>
             </div>
 
-            {targetProjectId && (
+            {prescriptionData.projectId && spaces.length > 0 && (
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Espace *
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Espace
                 </label>
                 <select
-                  value={selectedSpaceId}
-                  onChange={(e) => setSelectedSpaceId(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={prescriptionData.spaceId}
+                  onChange={(e) => setPrescriptionData({ 
+                    ...prescriptionData, 
+                    spaceId: e.target.value 
+                  })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent"
                 >
-                  <option value="">Choisir un espace</option>
-                  {projectSpaces.map((space: any) => (
+                  <option value="">Non assigné</option>
+                  {spaces.map((space) => (
                     <option key={space.id} value={space.id}>
                       {space.name}
                     </option>
                   ))}
                 </select>
-                {projectSpaces.length === 0 && targetProjectId && (
-                  <p className="text-sm text-amber-600 mt-1">
-                    ⚠️ Aucun espace défini pour ce projet. Les espaces seront créés automatiquement.
-                  </p>
-                )}
               </div>
             )}
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Quantité
-              </label>
-              <input
-                type="number"
-                min="1"
-                value={prescriptionData.quantity}
-                onChange={(e) => setPrescriptionData(prev => ({ ...prev, quantity: parseInt(e.target.value) || 1 }))}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Quantité *
+                </label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  value={prescriptionData.quantity}
+                  onChange={(e) => handleQuantityChange(parseInt(e.target.value) || 1)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Prix total
+                </label>
+                <div className="px-3 py-2 bg-slate-100 rounded-lg text-slate-900 font-medium">
+                  {prescriptionData.totalPrice.toFixed(2)} €
+                </div>
+              </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Notes (optionnel)
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Notes
               </label>
               <textarea
                 value={prescriptionData.notes}
-                onChange={(e) => setPrescriptionData(prev => ({ ...prev, notes: e.target.value }))}
-                rows={2}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                placeholder="Notes spécifiques pour cette prescription..."
+                onChange={(e) => setPrescriptionData({ 
+                  ...prescriptionData, 
+                  notes: e.target.value 
+                })}
+                rows={3}
+                placeholder="Instructions spéciales, finitions, etc."
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent"
               />
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 mt-6">
+          <div className="flex justify-end gap-2 mt-6 pt-6 border-t border-slate-200">
             <button
+              type="button"
               onClick={onClose}
-              className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              className="px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
             >
               Annuler
             </button>
             <button
-              onClick={handleCreatePrescription}
-              disabled={!targetProjectId || !resource}
-              className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+              type="submit"
+              disabled={loading || !prescriptionData.projectId}
+              className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50"
             >
-              Créer la prescription
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Ajout...
+                </span>
+              ) : (
+                'Ajouter au projet'
+              )}
             </button>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   )
