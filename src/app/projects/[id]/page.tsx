@@ -5,6 +5,8 @@ import { useRouter, useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import SpacesTab from '@/components/spaces/SpacesTab'
 import FilesPlansModule from '@/components/files/FilesPlansModule'
+import PrescriptionFormModal from '@/components/prescriptions/PrescriptionFormModal'
+import SpaceManagerModal from '@/components/spaces/SpaceManagerModal'
 
 
 
@@ -99,6 +101,9 @@ export default function ProjectDetailPage() {
   const [newComment, setNewComment] = useState('')
   const [showLibraryModal, setShowLibraryModal] = useState(false)
   const [spaces, setSpaces] = useState<Array<{ id: string; name: string }>>([])
+  const [showPrescriptionModal, setShowPrescriptionModal] = useState(false)
+  const [categories, setCategories] = useState<any[]>([])
+  const [showSpaceManager, setShowSpaceManager] = useState(false)
 
 
   useEffect(() => {
@@ -106,6 +111,7 @@ export default function ProjectDetailPage() {
       fetchProject(params.id as string)
       fetchPrescriptions(params.id as string)
       fetchSpaces(params.id as string)
+      fetchCategories()
     }
   }, [params.id])
 
@@ -137,6 +143,18 @@ export default function ProjectDetailPage() {
       setLoading(false)
     }
   }
+
+  const fetchCategories = async () => {
+  try {
+    const response = await fetch('/api/categories')
+    if (response.ok) {
+      const data = await response.json()
+      setCategories(data)
+    }
+  } catch (error) {
+    console.error('Erreur chargement catégories:', error)
+  }
+}
 
   const fetchPrescriptions = async (projectId: string) => {
     try {
@@ -189,13 +207,12 @@ export default function ProjectDetailPage() {
     }
   }
 
-  const openModal = (prescription: Prescription) => {
-    setSelectedPrescription(prescription)
-    setModalOpen(true)
-    setComments([])
-    fetchComments(prescription.id)
-  }
-
+    const openModal = (prescription: Prescription) => {
+      setSelectedPrescription(prescription)
+      setModalOpen(true)
+      setComments([])
+      fetchComments(prescription.id)
+    }
   // Helper functions
   const getSpaceIcon = (type: string) => {
     const icons: { [key: string]: string } = {
@@ -481,7 +498,8 @@ export default function ProjectDetailPage() {
             prescriptions={prescriptions}
             onPrescriptionClick={openModal}
             onPrescriptionsUpdated={() => fetchPrescriptions(project.id)}
-            onNavigateToLibrary={() => setShowLibraryModal(true)}
+            onNavigateToLibrary={() => setShowPrescriptionModal(true)}
+            onManageSpaces={() => setShowSpaceManager(true)}
           />
         )}
 
@@ -502,6 +520,33 @@ export default function ProjectDetailPage() {
               Le module "{activeTab}" sera développé dans les prochaines étapes !
             </p>
           </div>
+        )}
+
+        {/* Modal de création de prescription */}
+        {showPrescriptionModal && (
+          <PrescriptionFormModal
+            isOpen={showPrescriptionModal}
+            onClose={() => setShowPrescriptionModal(false)}
+            projectId={project.id}
+            spaces={spaces}
+            categories={categories}
+            onSuccess={() => {
+              setShowPrescriptionModal(false)
+              fetchPrescriptions(project.id)
+            }}
+          />
+        )}
+
+        {showSpaceManager && (
+          <SpaceManagerModal
+            isOpen={showSpaceManager}
+            onClose={() => setShowSpaceManager(false)}
+            projectId={project.id}
+            onSpacesUpdated={() => {
+              fetchSpaces(project.id)
+              fetchPrescriptions(project.id) // Pour rafraîchir les espaces dans les prescriptions
+            }}
+          />
         )}
       </main>
 

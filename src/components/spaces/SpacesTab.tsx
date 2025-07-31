@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Filter, Search } from 'lucide-react'
+import { Plus, Filter, Search, Settings } from 'lucide-react'
 
 interface Prescription {
   id: string
@@ -16,6 +16,10 @@ interface Prescription {
   supplier?: string
   status: string
   notes?: string
+  validatedAt?: string
+  orderedAt?: string
+  deliveredAt?: string
+  createdAt: string
   space: {
     id: string
     name: string
@@ -27,6 +31,11 @@ interface Prescription {
     colorHex?: string
     icon?: string
   }
+  creator: {
+    firstName?: string
+    lastName?: string
+    email: string
+  }
 }
 
 interface SpacesTabProps {
@@ -35,6 +44,7 @@ interface SpacesTabProps {
   onPrescriptionClick: (prescription: Prescription) => void
   onPrescriptionsUpdated: () => void
   onNavigateToLibrary: () => void
+  onManageSpaces?: () => void
 }
 
 export default function SpacesTab({
@@ -42,13 +52,13 @@ export default function SpacesTab({
   prescriptions,
   onPrescriptionClick,
   onPrescriptionsUpdated,
-  onNavigateToLibrary
+  onNavigateToLibrary,
+  onManageSpaces
 }: SpacesTabProps) {
   const [selectedSpace, setSelectedSpace] = useState<string>('ALL')
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL')
   const [searchQuery, setSearchQuery] = useState('')
 
-  // Extraire les espaces uniques
   const spaces = Array.from(new Set(prescriptions.map(p => p.space?.id).filter(Boolean)))
     .map(spaceId => {
       const prescription = prescriptions.find(p => p.space?.id === spaceId)
@@ -56,7 +66,6 @@ export default function SpacesTab({
     })
     .filter(Boolean)
 
-  // Fonction pour obtenir l'icône d'un espace
   const getSpaceIcon = (type?: string) => {
     const icons: { [key: string]: string } = {
       'SALON': '🛋️',
@@ -71,7 +80,6 @@ export default function SpacesTab({
     return icons[type || ''] || '📦'
   }
 
-  // Filtrer les prescriptions
   const filteredPrescriptions = prescriptions.filter(prescription => {
     const matchesSpace = selectedSpace === 'ALL' || 
       (selectedSpace === 'UNASSIGNED' && !prescription.space) ||
@@ -87,12 +95,10 @@ export default function SpacesTab({
     return matchesSpace && matchesStatus && matchesSearch
   })
 
-  // Calculer les totaux
   const totalAmount = filteredPrescriptions.reduce((sum, p) => sum + (p.totalPrice || 0), 0)
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Actions et recherche */}
       <div className="bg-white rounded-lg border border-slate-200 p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
@@ -107,20 +113,32 @@ export default function SpacesTab({
               />
             </div>
           </div>
-          <button
-            onClick={onNavigateToLibrary}
-            className="w-full sm:w-auto px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors text-sm sm:text-base flex items-center justify-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Ajouter une prescription
-          </button>
+          
+          <div className="flex gap-2">
+            <button
+              onClick={onNavigateToLibrary}
+              className="w-full sm:w-auto px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors text-sm sm:text-base flex items-center justify-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Ajouter une prescription</span>
+            </button>
+            
+            {onManageSpaces && (
+              <button
+                onClick={onManageSpaces}
+                className="px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors text-sm sm:text-base flex items-center gap-2"
+                title="Gérer les espaces"
+              >
+                <Settings className="w-4 h-4" />
+                <span className="hidden sm:inline">Espaces</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Filtres */}
       <div className="bg-white rounded-lg border border-slate-200 p-4 sm:p-6">
         <div className="space-y-4">
-          {/* Filtres par espace - Scrollable sur mobile */}
           <div>
             <h3 className="text-sm font-medium text-slate-700 mb-3">Filtrer par espace</h3>
             <div className="flex gap-2 overflow-x-auto pb-2 -mb-2">
@@ -160,7 +178,6 @@ export default function SpacesTab({
             </div>
           </div>
 
-          {/* Filtres par statut */}
           <div>
             <h3 className="text-sm font-medium text-slate-700 mb-3">Filtrer par statut</h3>
             <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
@@ -219,7 +236,6 @@ export default function SpacesTab({
         </div>
       </div>
 
-      {/* Résumé */}
       <div className="bg-white rounded-lg border border-slate-200 p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row justify-between gap-2">
           <div className="text-sm text-slate-600">
@@ -231,7 +247,6 @@ export default function SpacesTab({
         </div>
       </div>
 
-      {/* Liste des prescriptions */}
       {filteredPrescriptions.length === 0 ? (
         <div className="bg-white rounded-lg border border-slate-200 p-8 sm:p-12 text-center">
           <div className="text-5xl sm:text-6xl mb-4">🛋️</div>
