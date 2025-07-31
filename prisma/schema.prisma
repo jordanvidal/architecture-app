@@ -8,7 +8,7 @@ datasource db {
 }
 
 model Account {
-  id                String  @id @default(cuid())
+  id                String  @id
   userId            String
   type              String
   provider          String
@@ -20,39 +20,39 @@ model Account {
   scope             String?
   id_token          String?
   session_state     String?
-  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  User              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
 
 model Session {
-  id           String   @id @default(cuid())
+  id           String   @id
   sessionToken String   @unique
   userId       String
   expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  User         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model User {
-  id            String            @id @default(cuid())
-  firstName     String?
-  lastName      String?
-  email         String            @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?
-  lastLoginAt   DateTime?
-  role          UserRole          @default(CLIENT)
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-  accounts      Account[]
-  sessions      Session[]
-  contacts      Contact[]
-  prescriptions Prescription[]
-  uploadedFiles ProjectFile[]
-  projects      Project[]
-  resources     ResourceLibrary[]
-  spaceFiles    SpaceFile[]
+  id               String             @id
+  firstName        String?
+  lastName         String?
+  email            String             @unique
+  emailVerified    DateTime?
+  image            String?
+  password         String?
+  lastLoginAt      DateTime?
+  role             UserRole           @default(CLIENT)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime
+  Account          Account[]
+  Session          Session[]
+  contacts         contacts[]
+  prescriptions    prescriptions[]
+  project_files    project_files[]
+  projects         projects[]
+  resource_library resource_library[]
+  space_files      space_files[]
 }
 
 model VerificationToken {
@@ -63,22 +63,123 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-model Project {
-  id                    String         @id @default(cuid())
+model brands {
+  id        String   @id
+  name      String   @unique
+  website   String?
+  country   String?
+  logo      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+}
+
+model contacts {
+  id               String             @id
+  name             String
+  company          String?
+  email            String?
+  phone            String?
+  website          String?
+  address          String?
+  notes            String?
+  contactType      ContactType
+  isSupplier       Boolean            @default(false)
+  isReseller       Boolean            @default(false)
+  createdBy        String
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime
+  User             User               @relation(fields: [createdBy], references: [id])
+  prescriptions    prescriptions[]
+  resource_library resource_library[]
+}
+
+model prescription_categories {
+  id               String             @id
+  name             String             @unique
+  description      String?
+  icon             String?
+  colorHex         String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime
+  prescriptions    prescriptions[]
+  resource_library resource_library[]
+}
+
+model prescription_spaces {
+  id             String        @id
+  prescriptionId String
+  spaceId        String
+  quantity       Int           @default(1)
+  prescriptions  prescriptions @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  spaces         spaces        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  @@unique([prescriptionId, spaceId])
+}
+
+model prescriptions {
+  id                      String                  @id
+  name                    String
+  description             String?
+  quantity                Int                     @default(1)
+  unitPrice               Float?
+  totalPrice              Float?
+  status                  PrescriptionStatus      @default(EN_COURS)
+  projectId               String
+  spaceId                 String?
+  categoryId              String
+  brand                   String?
+  reference               String?
+  supplier                String?
+  productUrl              String?
+  notes                   String?
+  createdBy               String
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime
+  contactId               String?
+  prescription_spaces     prescription_spaces[]
+  prescription_categories prescription_categories @relation(fields: [categoryId], references: [id])
+  contacts                contacts?               @relation(fields: [contactId], references: [id])
+  User                    User                    @relation(fields: [createdBy], references: [id])
+  projects                projects                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  spaces                  spaces?                 @relation(fields: [spaceId], references: [id])
+}
+
+model project_files {
+  id           String       @id
+  name         String
+  originalName String
+  type         FileType
+  category     FileCategory
+  mimeType     String
+  size         Int
+  url          String
+  description  String?
+  projectId    String
+  spaceId      String?
+  uploadedBy   String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime
+  projects     projects     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  spaces       spaces?      @relation(fields: [spaceId], references: [id])
+  User         User         @relation(fields: [uploadedBy], references: [id])
+}
+
+model projects {
+  id                    String          @id
   name                  String
   description           String?
   client_name           String
   client_email          String?
   address               String?
-  status                ProjectStatus  @default(BROUILLON)
+  status                ProjectStatus   @default(BROUILLON)
   budget_total          Float?
   budget_spent          Float?
-  progress_percentage   Int            @default(0)
+  progress_percentage   Int             @default(0)
   start_date            DateTime?
   end_date              DateTime?
   created_by            String
-  created_at            DateTime       @default(now())
-  updated_at            DateTime       @updatedAt
+  created_at            DateTime        @default(now())
+  updated_at            DateTime
   image_url             String?
   delivery_contact_name String?
   delivery_company      String?
@@ -92,142 +193,54 @@ model Project {
   delivery_instructions String?
   billing_addresses     Json?
   clientEmails          String[]
-  deliveryElevator      Boolean        @default(true)
+  deliveryElevator      Boolean         @default(true)
   deliveryFloorInfo     String?
   deliveryPhotos        String[]
   exteriorSurfaceM2     Float?
   exteriorType          ExteriorType?
-  hasExterior           Boolean        @default(false)
+  hasExterior           Boolean         @default(false)
   projectType           ProjectType?
   surfaceM2             Float?
-  prescriptions         Prescription[]
-  files                 ProjectFile[]
-  creator               User           @relation(fields: [created_by], references: [id])
-  spaces                Space[]
-
-  @@map("projects")
+  prescriptions         prescriptions[]
+  project_files         project_files[]
+  User                  User            @relation(fields: [created_by], references: [id])
+  spaces                spaces[]
 }
 
-model Space {
-  id                 String              @id @default(cuid())
-  name               String
-  type               SpaceType           @default(AUTRE)
-  description        String?
-  surfaceM2          Float?
-  projectId          String
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  prescriptionSpaces PrescriptionSpace[]
-  prescriptions      Prescription[]
-  projectFiles       ProjectFile[]
-  spaceFiles         SpaceFile[]
-  project            Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  @@map("spaces")
+model resource_library {
+  id                      String                  @id
+  name                    String
+  description             String?
+  categoryId              String
+  brand                   String?
+  reference               String?
+  productUrl              String?
+  priceMin                Float?
+  priceMax                Float?
+  supplier                String?
+  availability            String?
+  imageUrl                String?
+  tags                    String[]
+  isFavorite              Boolean                 @default(false)
+  createdBy               String
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime
+  categoryPath            String[]
+  contactId               String?
+  countryOrigin           String?
+  dimensions              Json?
+  images                  String[]
+  mainImageUrl            String?
+  pricePro                Float?
+  technicalSheet          String?
+  price                   Float?
+  prescription_categories prescription_categories @relation(fields: [categoryId], references: [id])
+  contacts                contacts?               @relation(fields: [contactId], references: [id])
+  User                    User                    @relation(fields: [createdBy], references: [id])
 }
 
-model PrescriptionCategory {
-  id            String            @id @default(cuid())
-  name          String            @unique
-  description   String?
-  icon          String?
-  colorHex      String?
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-  prescriptions Prescription[]
-  resources     ResourceLibrary[]
-
-  @@map("prescription_categories")
-}
-
-model Prescription {
-  id          String               @id @default(cuid())
-  name        String
-  description String?
-  quantity    Int                  @default(1)
-  unitPrice   Float?
-  totalPrice  Float?
-  status      PrescriptionStatus   @default(EN_COURS)
-  projectId   String
-  spaceId     String?
-  categoryId  String
-  brand       String?
-  reference   String?
-  supplier    String?
-  productUrl  String?
-  notes       String?
-  createdBy   String
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
-  contactId   String?
-  spaces      PrescriptionSpace[]
-  category    PrescriptionCategory @relation(fields: [categoryId], references: [id])
-  contact     Contact?             @relation("ContactPrescriptions", fields: [contactId], references: [id])
-  creator     User                 @relation(fields: [createdBy], references: [id])
-  project     Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  space       Space?               @relation(fields: [spaceId], references: [id])
-
-  @@map("prescriptions")
-}
-
-model ResourceLibrary {
-  id             String               @id @default(cuid())
-  name           String
-  description    String?
-  categoryId     String
-  brand          String?
-  reference      String?
-  productUrl     String?
-  priceMin       Float?
-  priceMax       Float?
-  supplier       String?
-  availability   String?
-  imageUrl       String?
-  tags           String[]
-  isFavorite     Boolean              @default(false)
-  createdBy      String
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
-  categoryPath   String[]
-  contactId      String?
-  countryOrigin  String?
-  dimensions     Json?
-  images         String[]
-  mainImageUrl   String?
-  pricePro       Float?
-  technicalSheet String?
-  price          Float?
-  category       PrescriptionCategory @relation(fields: [categoryId], references: [id])
-  contact        Contact?             @relation("ContactResources", fields: [contactId], references: [id])
-  creator        User                 @relation(fields: [createdBy], references: [id])
-
-  @@map("resource_library")
-}
-
-model ProjectFile {
-  id           String       @id @default(cuid())
-  name         String
-  originalName String
-  type         FileType
-  category     FileCategory
-  mimeType     String
-  size         Int
-  url          String
-  description  String?
-  projectId    String
-  spaceId      String?
-  uploadedBy   String
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  space        Space?       @relation(fields: [spaceId], references: [id])
-  uploader     User         @relation(fields: [uploadedBy], references: [id])
-
-  @@map("project_files")
-}
-
-model SpaceFile {
-  id          String   @id @default(cuid())
+model space_files {
+  id          String   @id
   filename    String
   url         String
   fileType    FileType
@@ -237,90 +250,48 @@ model SpaceFile {
   spaceId     String
   uploadedBy  String
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  space       Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  uploader    User     @relation(fields: [uploadedBy], references: [id])
-
-  @@map("space_files")
+  updatedAt   DateTime
+  spaces      spaces   @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  User        User     @relation(fields: [uploadedBy], references: [id])
 }
 
-model Contact {
-  id            String            @id @default(cuid())
-  name          String
-  company       String?
-  email         String?
-  phone         String?
-  website       String?
-  address       String?
-  notes         String?
-  contactType   ContactType
-  isSupplier    Boolean           @default(false)
-  isReseller    Boolean           @default(false)
-  createdBy     String
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-  creator       User              @relation(fields: [createdBy], references: [id])
-  prescriptions Prescription[]    @relation("ContactPrescriptions")
-  resources     ResourceLibrary[] @relation("ContactResources")
-
-  @@map("contacts")
+model spaces {
+  id                  String                @id
+  name                String
+  type                SpaceType             @default(AUTRE)
+  description         String?
+  surfaceM2           Float?
+  projectId           String
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime
+  prescription_spaces prescription_spaces[]
+  prescriptions       prescriptions[]
+  project_files       project_files[]
+  space_files         space_files[]
+  projects            projects              @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
-model Brand {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  website   String?
-  country   String?
-  logo      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("brands")
-}
-
-model PrescriptionSpace {
-  id             String       @id @default(cuid())
-  prescriptionId String
-  spaceId        String
-  quantity       Int          @default(1)
-  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
-  space          Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-
-  @@unique([prescriptionId, spaceId])
-  @@map("prescription_spaces")
-}
-
-enum UserRole {
-  CLIENT
-  AGENCY
-  ADMIN
-}
-
-enum ProjectStatus {
-  BROUILLON
-  EN_COURS
-  EN_ATTENTE
-  TERMINE
-  ANNULE
-}
-
-enum SpaceType {
-  SALON
-  CUISINE
-  CHAMBRE
-  SALLE_DE_BAIN
-  BUREAU
-  ENTREE
-  COULOIR
+enum ContactType {
+  FOURNISSEUR
+  REVENDEUR
+  MARQUE
+  ARTISAN
   AUTRE
 }
 
-enum PrescriptionStatus {
-  EN_COURS
-  VALIDE
-  COMMANDE
-  LIVRE
-  ANNULE
+enum ExteriorType {
+  JARDIN
+  TERRASSE
+  BALCON
+}
+
+enum FileCategory {
+  VISUEL_3D
+  PLANS_TECHNIQUES
+  ELEVATIONS
+  PHOTOS_CHANTIER
+  DOCUMENTS
+  AUTRES
 }
 
 enum FileType {
@@ -339,21 +310,20 @@ enum FileType {
   OTHER
 }
 
-enum FileCategory {
-  VISUEL_3D
-  PLANS_TECHNIQUES
-  ELEVATIONS
-  PHOTOS_CHANTIER
-  DOCUMENTS
-  AUTRES
+enum PrescriptionStatus {
+  EN_COURS
+  VALIDE
+  COMMANDE
+  LIVRE
+  ANNULE
 }
 
-enum ContactType {
-  FOURNISSEUR
-  REVENDEUR
-  MARQUE
-  ARTISAN
-  AUTRE
+enum ProjectStatus {
+  BROUILLON
+  EN_COURS
+  EN_ATTENTE
+  TERMINE
+  ANNULE
 }
 
 enum ProjectType {
@@ -368,8 +338,19 @@ enum ProjectType {
   AUTRE
 }
 
-enum ExteriorType {
-  JARDIN
-  TERRASSE
-  BALCON
+enum SpaceType {
+  SALON
+  CUISINE
+  CHAMBRE
+  SALLE_DE_BAIN
+  BUREAU
+  ENTREE
+  COULOIR
+  AUTRE
+}
+
+enum UserRole {
+  CLIENT
+  AGENCY
+  ADMIN
 }
