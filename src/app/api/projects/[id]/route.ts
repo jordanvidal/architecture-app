@@ -14,8 +14,19 @@ export async function GET(
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
 
-    const project = await prisma.project.findUnique({
-      where: { id: params.id },
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: 'Utilisateur non trouvé' }, { status: 404 })
+    }
+
+    const project = await prisma.project.findFirst({
+      where: { 
+        id: params.id,
+        created_by: user.id // Vérifier que l'utilisateur est le créateur
+      },
       include: {
         spaces: true,
         prescriptions: {
@@ -46,23 +57,54 @@ export async function GET(
       return NextResponse.json({ error: 'Projet non trouvé' }, { status: 404 })
     }
 
-    const projectWithLegacy = {
-      ...project,
-      clientEmail: project.clientEmails?.[0] || project.clientEmail,
-      deliveryAddress: project.deliveryAddress ? {
-        contactName: project.deliveryContactName,
-        address: project.deliveryAddress,
-        city: project.deliveryCity,
-        zipCode: project.deliveryZipCode,
-        country: project.deliveryCountry,
-        accessCode: project.deliveryAccessCode,
-        floor: project.deliveryFloor,
-        doorCode: project.deliveryDoorCode,
-        instructions: project.deliveryInstructions
-      } : null
+    // Transformer les données pour correspondre au format attendu par le frontend
+    const formattedProject = {
+      id: project.id,
+      name: project.name,
+      description: project.description,
+      clientName: project.client_name,
+      clientEmail: project.clientEmails?.[0] || project.client_email,
+      clientEmails: project.clientEmails,
+      address: project.address,
+      status: project.status,
+      budgetTotal: project.budget_total,
+      budgetSpent: project.budget_spent,
+      progressPercentage: project.progress_percentage,
+      startDate: project.start_date,
+      endDate: project.end_date,
+      imageUrl: project.image_url,
+      createdAt: project.created_at,
+      updatedAt: project.updated_at,
+      projectType: project.projectType,
+      surfaceM2: project.surfaceM2,
+      hasExterior: project.hasExterior,
+      exteriorType: project.exteriorType,
+      exteriorSurfaceM2: project.exteriorSurfaceM2,
+      deliveryAddress: project.delivery_address ? {
+        contactName: project.delivery_contact_name,
+        company: project.delivery_company,
+        address: project.delivery_address,
+        city: project.delivery_city,
+        zipCode: project.delivery_zip_code,
+        country: project.delivery_country,
+        accessCode: project.delivery_access_code,
+        floor: project.delivery_floor,
+        doorCode: project.delivery_door_code,
+        instructions: project.delivery_instructions
+      } : null,
+      billingAddresses: project.billing_addresses,
+      spaces: project.spaces,
+      prescriptions: project.prescriptions,
+      files: project.files,
+      creator: project.creator,
+      _count: {
+        prescriptions: project.prescriptions.length,
+        spaces: project.spaces.length,
+        files: project.files.length
+      }
     }
 
-    return NextResponse.json(projectWithLegacy)
+    return NextResponse.json(formattedProject)
   } catch (error) {
     console.error('Erreur récupération projet:', error)
     return NextResponse.json(
@@ -82,6 +124,26 @@ export async function PUT(
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
 
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: 'Utilisateur non trouvé' }, { status: 404 })
+    }
+
+    // Vérifier que l'utilisateur est le créateur du projet
+    const existingProject = await prisma.project.findFirst({
+      where: {
+        id: params.id,
+        created_by: user.id
+      }
+    })
+
+    if (!existingProject) {
+      return NextResponse.json({ error: 'Projet non trouvé ou accès refusé' }, { status: 404 })
+    }
+
     const body = await request.json()
     
     const validEmails = body.clientEmails?.filter((email: string) => email?.trim()) || []
@@ -90,7 +152,7 @@ export async function PUT(
       where: { id: params.id },
       data: {
         name: body.name,
-        clientName: body.clientName,
+        client_name: body.clientName,
         clientEmails: validEmails,
         projectType: body.projectType || null,
         surfaceM2: body.surfaceM2 ? parseFloat(body.surfaceM2) : null,
@@ -98,23 +160,48 @@ export async function PUT(
         exteriorType: body.exteriorType || null,
         exteriorSurfaceM2: body.exteriorSurfaceM2 ? parseFloat(body.exteriorSurfaceM2) : null,
         address: body.address,
-        deliveryContactName: body.clientName,
-        deliveryAddress: body.address,
-        deliveryCity: body.city,
-        deliveryZipCode: body.zipCode,
-        deliveryCountry: body.country || 'France',
-        deliveryAccessCode: body.accessCode,
-        deliveryFloor: body.floor,
-        deliveryDoorCode: body.doorCode,
-        deliveryInstructions: body.deliveryInstructions,
+        delivery_contact_name: body.clientName,
+        delivery_address: body.address,
+        delivery_city: body.city,
+        delivery_zip_code: body.zipCode,
+        delivery_country: body.country || 'France',
+        delivery_access_code: body.accessCode,
+        delivery_floor: body.floor,
+        delivery_door_code: body.doorCode,
+        delivery_instructions: body.deliveryInstructions,
         deliveryFloorInfo: body.floor,
-        budgetTotal: body.budgetTotal ? parseFloat(body.budgetTotal) : null,
-        startDate: body.startDate ? new Date(body.startDate) : new Date(),
-        endDate: body.endDate ? new Date(body.endDate) : null,
+        budget_total: body.budgetTotal ? parseFloat(body.budgetTotal) : null,
+        start_date: body.startDate ? new Date(body.startDate) : new Date(),
+        end_date: body.endDate ? new Date(body.endDate) : null,
       }
     })
 
-    return NextResponse.json(project)
+    // Transformer les données pour correspondre au format attendu par le frontend
+    const formattedProject = {
+      id: project.id,
+      name: project.name,
+      description: project.description,
+      clientName: project.client_name,
+      clientEmail: project.clientEmails?.[0] || project.client_email,
+      clientEmails: project.clientEmails,
+      address: project.address,
+      status: project.status,
+      budgetTotal: project.budget_total,
+      budgetSpent: project.budget_spent,
+      progressPercentage: project.progress_percentage,
+      startDate: project.start_date,
+      endDate: project.end_date,
+      imageUrl: project.image_url,
+      createdAt: project.created_at,
+      updatedAt: project.updated_at,
+      projectType: project.projectType,
+      surfaceM2: project.surfaceM2,
+      hasExterior: project.hasExterior,
+      exteriorType: project.exteriorType,
+      exteriorSurfaceM2: project.exteriorSurfaceM2
+    }
+
+    return NextResponse.json(formattedProject)
   } catch (error) {
     console.error('Erreur mise à jour projet:', error)
     return NextResponse.json(
@@ -132,6 +219,26 @@ export async function DELETE(
     const session = await getServerSession(authOptions)
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: 'Utilisateur non trouvé' }, { status: 404 })
+    }
+
+    // Vérifier que l'utilisateur est le créateur du projet
+    const existingProject = await prisma.project.findFirst({
+      where: {
+        id: params.id,
+        created_by: user.id
+      }
+    })
+
+    if (!existingProject) {
+      return NextResponse.json({ error: 'Projet non trouvé ou accès refusé' }, { status: 404 })
     }
 
     await prisma.project.delete({

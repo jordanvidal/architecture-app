@@ -11,9 +11,9 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const navigation = [
-    { name: 'Projets', href: '/projects', icon: '📊' },
-    { name: 'Bibliothèque', href: '/library', icon: '📚' },
-    { name: 'Contacts', href: '/contacts', icon: '👥' },
+    { name: 'Projets', href: '/projects' },
+    { name: 'Bibliothèque', href: '/library' },
+    { name: 'Contacts', href: '/contacts' },
   ]
 
   const isActive = (href: string) => {
@@ -45,7 +45,6 @@ export default function Navbar() {
                         : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
                     }`}
                   >
-                    <span className="mr-2">{item.icon}</span>
                     {item.name}
                   </Link>
                 ))}
@@ -113,7 +112,6 @@ export default function Navbar() {
                 }`}
                 onClick={() => setMobileMenuOpen(false)}
               >
-                <span className="mr-2">{item.icon}</span>
                 {item.name}
               </Link>
             ))}

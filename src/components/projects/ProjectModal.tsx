@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useToast } from '@/contexts/ToastContext'
 
 interface ProjectModalProps {
   isOpen: boolean
@@ -10,6 +11,7 @@ interface ProjectModalProps {
 
 export default function ProjectModal({ isOpen, onClose, project, onProjectSaved }: ProjectModalProps) {
   const router = useRouter()
+  const { addToast } = useToast()
   const isEditing = !!project
   
   const [formData, setFormData] = useState({
@@ -35,6 +37,7 @@ export default function ProjectModal({ isOpen, onClose, project, onProjectSaved 
   })
 
   const [loading, setLoading] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   const addEmail = () => {
     setFormData(prev => ({
@@ -84,16 +87,51 @@ export default function ProjectModal({ isOpen, onClose, project, onProjectSaved 
 
       if (response.ok) {
         const data = await response.json()
+        addToast(isEditing ? 'Projet modifié avec succès' : 'Projet créé avec succès', 'success')
         onProjectSaved?.()
         onClose()
         if (!isEditing) {
           router.push(`/projects/${data.id}`)
         }
+      } else {
+        const error = await response.json()
+        addToast(error.error || 'Erreur lors de la sauvegarde', 'error')
       }
     } catch (error) {
       console.error('Erreur:', error)
+      addToast('Erreur lors de la sauvegarde du projet', 'error')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!project) return
+    
+    if (!confirm(`Êtes-vous sûr de vouloir supprimer le projet "${project.name}" ?\n\nCette action est irréversible et supprimera toutes les prescriptions, espaces et fichiers associés.`)) {
+      return
+    }
+
+    setDeleteLoading(true)
+    try {
+      const response = await fetch(`/api/projects/${project.id}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        addToast('Projet supprimé avec succès', 'success')
+        onProjectSaved?.() // Pour rafraîchir la liste
+        onClose()
+        router.push('/projects')
+      } else {
+        const error = await response.json()
+        addToast(error.error || 'Erreur lors de la suppression', 'error')
+      }
+    } catch (error) {
+      console.error('Erreur suppression:', error)
+      addToast('Erreur lors de la suppression du projet', 'error')
+    } finally {
+      setDeleteLoading(false)
     }
   }
 
@@ -142,11 +180,11 @@ export default function ProjectModal({ isOpen, onClose, project, onProjectSaved 
                     onChange={(e) => setFormData({ ...formData, projectType: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800"
                   >
-                    <option value="">Sélectionner...</option>
+                    <option value="">Sélectionner un type</option>
                     <option value="HOTEL">Hôtel</option>
-                    <option value="RESIDENTIEL_APPARTEMENT">Résidentiel - Appartement</option>
-                    <option value="RESIDENTIEL_MAISON">Résidentiel - Maison</option>
-                    <option value="RESIDENTIEL_IMMEUBLE">Résidentiel - Immeuble</option>
+                    <option value="RESIDENTIEL_APPARTEMENT">Appartement</option>
+                    <option value="RESIDENTIEL_MAISON">Maison</option>
+                    <option value="RESIDENTIEL_IMMEUBLE">Immeuble</option>
                     <option value="RESTAURANT">Restaurant</option>
                     <option value="RETAIL">Retail</option>
                     <option value="BUREAUX">Bureaux</option>
@@ -164,26 +202,27 @@ export default function ProjectModal({ isOpen, onClose, project, onProjectSaved 
                     step="0.01"
                     value={formData.surfaceM2}
                     onChange={(e) => setFormData({ ...formData, surfaceM2: e.target.value })}
+                    placeholder="Optionnel"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800"
                   />
                 </div>
-              </div>
 
-              <div className="mt-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.hasExterior}
-                    onChange={(e) => setFormData({ ...formData, hasExterior: e.target.checked })}
-                    className="rounded border-slate-300"
-                  />
-                  <span className="text-sm font-medium text-slate-700">
-                    Le projet comprend des espaces extérieurs
-                  </span>
-                </label>
+                <div className="md:col-span-2">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.hasExterior}
+                      onChange={(e) => setFormData({ ...formData, hasExterior: e.target.checked })}
+                      className="rounded border-slate-300 text-slate-800 focus:ring-slate-800"
+                    />
+                    <span className="text-sm font-medium text-slate-700">
+                      Le projet inclut un espace extérieur
+                    </span>
+                  </label>
+                </div>
 
                 {formData.hasExterior && (
-                  <div className="grid gap-4 md:grid-cols-2 mt-3">
+                  <>
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-1">
                         Type d'extérieur
@@ -193,12 +232,13 @@ export default function ProjectModal({ isOpen, onClose, project, onProjectSaved 
                         onChange={(e) => setFormData({ ...formData, exteriorType: e.target.value })}
                         className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800"
                       >
-                        <option value="">Sélectionner...</option>
+                        <option value="">Sélectionner</option>
                         <option value="JARDIN">Jardin</option>
                         <option value="TERRASSE">Terrasse</option>
                         <option value="BALCON">Balcon</option>
                       </select>
                     </div>
+
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-1">
                         Surface extérieure (m²)
@@ -208,10 +248,11 @@ export default function ProjectModal({ isOpen, onClose, project, onProjectSaved 
                         step="0.01"
                         value={formData.exteriorSurfaceM2}
                         onChange={(e) => setFormData({ ...formData, exteriorSurfaceM2: e.target.value })}
+                        placeholder="Optionnel"
                         className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800"
                       />
                     </div>
-                  </div>
+                  </>
                 )}
               </div>
             </div>
@@ -220,7 +261,7 @@ export default function ProjectModal({ isOpen, onClose, project, onProjectSaved 
             <div>
               <h3 className="text-lg font-medium text-slate-900 mb-4">Informations client</h3>
               
-              <div className="space-y-4">
+              <div className="grid gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
                     Nom du client *
@@ -238,23 +279,23 @@ export default function ProjectModal({ isOpen, onClose, project, onProjectSaved 
                   <label className="block text-sm font-medium text-slate-700 mb-1">
                     Email(s) du client
                   </label>
-                  {formData.clientEmails.map((email: string, index: number) => (
+                  {formData.clientEmails.map((email, index) => (
                     <div key={index} className="flex gap-2 mb-2">
                       <input
                         type="email"
                         value={email}
                         onChange={(e) => updateEmail(index, e.target.value)}
-                        placeholder={index === 0 ? "Email principal" : "Email additionnel"}
+                        placeholder="email@exemple.com"
                         className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800"
                       />
                       {formData.clientEmails.length > 1 && (
                         <button
                           type="button"
                           onClick={() => removeEmail(index)}
-                          className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg"
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
                         >
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                           </svg>
                         </button>
                       )}
@@ -273,73 +314,59 @@ export default function ProjectModal({ isOpen, onClose, project, onProjectSaved 
 
             {/* Adresse de livraison */}
             <div>
-              <h3 className="text-lg font-medium text-slate-900 mb-4">Adresse de livraison</h3>
+              <h3 className="text-lg font-medium text-slate-900 mb-4">Adresse du projet</h3>
               
-              <div className="grid gap-4">
-                <div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Adresse *
+                    Adresse
                   </label>
                   <input
                     type="text"
-                    required
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800"
                   />
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Code postal *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.zipCode}
-                      onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Ville *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.city}
-                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Pays *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.country}
-                      onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Code postal
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.zipCode}
+                    onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800"
+                  />
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Ville
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.city}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 md:col-span-2">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Code d'accès / Interphone
+                      Code accès
                     </label>
                     <input
                       type="text"
                       value={formData.accessCode}
                       onChange={(e) => setFormData({ ...formData, accessCode: e.target.value })}
+                      placeholder="Optionnel"
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800"
                     />
                   </div>
+
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
                       Étage
@@ -348,24 +375,13 @@ export default function ProjectModal({ isOpen, onClose, project, onProjectSaved 
                       type="text"
                       value={formData.floor}
                       onChange={(e) => setFormData({ ...formData, floor: e.target.value })}
-                      placeholder="Ex: 2ème étage"
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Code porte
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.doorCode}
-                      onChange={(e) => setFormData({ ...formData, doorCode: e.target.value })}
+                      placeholder="Optionnel"
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800"
                     />
                   </div>
                 </div>
 
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-slate-700 mb-1">
                     Instructions de livraison
                   </label>
@@ -373,18 +389,18 @@ export default function ProjectModal({ isOpen, onClose, project, onProjectSaved 
                     value={formData.deliveryInstructions}
                     onChange={(e) => setFormData({ ...formData, deliveryInstructions: e.target.value })}
                     rows={3}
-                    placeholder="Ex: Prévoir nacelle pour canapé, accès difficile..."
+                    placeholder="Instructions spéciales, horaires, etc."
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800"
                   />
                 </div>
               </div>
             </div>
 
-            {/* Dates et budget */}
+            {/* Planning et budget */}
             <div>
               <h3 className="text-lg font-medium text-slate-900 mb-4">Planning et budget</h3>
               
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
                     Date de début *
@@ -397,6 +413,7 @@ export default function ProjectModal({ isOpen, onClose, project, onProjectSaved 
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800"
                   />
                 </div>
+
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
                     Date de fin prévisionnelle
@@ -428,28 +445,57 @@ export default function ProjectModal({ isOpen, onClose, project, onProjectSaved 
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 mt-6 pt-6 border-t border-slate-200">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
-            >
-              Annuler
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50"
-            >
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  {isEditing ? 'Modification...' : 'Création...'}
-                </span>
-              ) : (
-                isEditing ? 'Modifier' : 'Créer'
+          <div className="flex justify-between items-center gap-2 mt-6 pt-6 border-t border-slate-200">
+            {/* Bouton supprimer à gauche pour les projets existants */}
+            <div>
+              {isEditing && (
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deleteLoading}
+                  className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors disabled:opacity-50 flex items-center gap-2"
+                >
+                  {deleteLoading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-red-700 border-t-transparent rounded-full animate-spin"></div>
+                      Suppression...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Supprimer le projet
+                    </>
+                  )}
+                </button>
               )}
-            </button>
+            </div>
+
+            {/* Boutons d'action à droite */}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50"
+              >
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    {isEditing ? 'Modification...' : 'Création...'}
+                  </span>
+                ) : (
+                  isEditing ? 'Modifier' : 'Créer'
+                )}
+              </button>
+            </div>
           </div>
         </form>
       </div>

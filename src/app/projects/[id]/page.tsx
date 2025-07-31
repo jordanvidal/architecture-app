@@ -6,6 +6,8 @@ import { useEffect, useState } from 'react'
 import SpacesTab from '@/components/spaces/SpacesTab'
 import FilesPlansModule from '@/components/files/FilesPlansModule'
 
+
+
 interface Project {
   id: string
   name: string
@@ -97,6 +99,7 @@ export default function ProjectDetailPage() {
   const [newComment, setNewComment] = useState('')
   const [showLibraryModal, setShowLibraryModal] = useState(false)
   const [spaces, setSpaces] = useState<Array<{ id: string; name: string }>>([])
+
 
   useEffect(() => {
     if (params.id) {
@@ -274,11 +277,11 @@ export default function ProjectDetailPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex space-x-4 sm:space-x-8 overflow-x-auto">
             {[
-              { id: 'overview', label: 'Vue d\'ensemble', icon: '📊' },
-              { id: 'prescriptions', label: 'Prescriptions', icon: '🛋️' },
-              { id: 'files', label: 'Fichiers & Plans', icon: '📁' },
-              { id: 'budget', label: 'Budget', icon: '💰' },
-              { id: 'comments', label: 'Commentaires', icon: '💬' }
+              { id: 'overview', label: 'Vue d\'ensemble' },
+              { id: 'prescriptions', label: 'Prescriptions' },
+              { id: 'files', label: 'Fichiers & Plans' },
+              { id: 'budget', label: 'Budget' },
+              { id: 'comments', label: 'Commentaires' }
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -290,13 +293,11 @@ export default function ProjectDetailPage() {
                 }}
                 className={`py-3 sm:py-4 px-1 sm:px-2 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap flex-shrink-0 ${
                   activeTab === tab.id
-                    ? 'border-slate-800 text-slate-900'
+                    ? 'border-slate-900 text-slate-900'
                     : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
                 }`}
               >
-                <span className="mr-1 sm:mr-2">{tab.icon}</span>
-                <span className="hidden sm:inline">{tab.label}</span>
-                <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
+                {tab.label}
               </button>
             ))}
           </div>

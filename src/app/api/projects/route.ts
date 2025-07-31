@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     const project = await prisma.project.create({
       data: {
         name: body.name,
-        clientName: body.clientName,
+        client_name: body.clientName, // Notez: client_name au lieu de clientName
         clientEmails: validEmails,
         projectType: body.projectType || null,
         surfaceM2: body.surfaceM2 ? parseFloat(body.surfaceM2) : null,
@@ -34,26 +34,39 @@ export async function POST(request: NextRequest) {
         exteriorType: body.exteriorType || null,
         exteriorSurfaceM2: body.exteriorSurfaceM2 ? parseFloat(body.exteriorSurfaceM2) : null,
         address: body.address,
-        deliveryContactName: body.clientName,
-        deliveryAddress: body.address,
-        deliveryCity: body.city,
-        deliveryZipCode: body.zipCode,
-        deliveryCountry: body.country || 'France',
-        deliveryAccessCode: body.accessCode,
-        deliveryFloor: body.floor,
-        deliveryDoorCode: body.doorCode,
-        deliveryInstructions: body.deliveryInstructions,
+        delivery_contact_name: body.clientName,
+        delivery_address: body.address,
+        delivery_city: body.city,
+        delivery_zip_code: body.zipCode,
+        delivery_country: body.country || 'France',
+        delivery_access_code: body.accessCode,
+        delivery_floor: body.floor,
+        delivery_door_code: body.doorCode,
+        delivery_instructions: body.deliveryInstructions,
         deliveryFloorInfo: body.floor,
-        budgetTotal: body.budgetTotal ? parseFloat(body.budgetTotal) : null,
-        startDate: body.startDate ? new Date(body.startDate) : new Date(),
-        endDate: body.endDate ? new Date(body.endDate) : null,
+        budget_total: body.budgetTotal ? parseFloat(body.budgetTotal) : null,
+        start_date: body.startDate ? new Date(body.startDate) : new Date(),
+        end_date: body.endDate ? new Date(body.endDate) : null,
         status: 'BROUILLON',
-        progressPercentage: 0,
-        createdBy: user.id
+        progress_percentage: 0,
+        created_by: user.id // Notez: created_by au lieu de createdBy
       }
     })
 
-    return NextResponse.json(project)
+    // Transformer les données pour correspondre au format attendu par le frontend
+    const formattedProject = {
+      ...project,
+      clientName: project.client_name,
+      budgetTotal: project.budget_total,
+      budgetSpent: project.budget_spent,
+      progressPercentage: project.progress_percentage,
+      startDate: project.start_date,
+      endDate: project.end_date,
+      createdAt: project.created_at,
+      updatedAt: project.updated_at
+    }
+
+    return NextResponse.json(formattedProject)
   } catch (error) {
     console.error('Erreur création projet:', error)
     return NextResponse.json(
@@ -70,8 +83,21 @@ export async function GET() {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
 
+    // Récupérer l'utilisateur actuel
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: 'Utilisateur non trouvé' }, { status: 404 })
+    }
+
+    // Filtrer les projets par l'utilisateur connecté
     const projects = await prisma.project.findMany({
-      orderBy: { createdAt: 'desc' },
+      where: {
+        created_by: user.id // Filtrer par créateur
+      },
+      orderBy: { created_at: 'desc' },
       include: {
         _count: {
           select: {
@@ -83,7 +109,20 @@ export async function GET() {
       }
     })
 
-    return NextResponse.json(projects)
+    // Transformer les données pour correspondre au format attendu par le frontend
+    const formattedProjects = projects.map(project => ({
+      ...project,
+      clientName: project.client_name,
+      budgetTotal: project.budget_total,
+      budgetSpent: project.budget_spent,
+      progressPercentage: project.progress_percentage,
+      startDate: project.start_date,
+      endDate: project.end_date,
+      createdAt: project.created_at,
+      updatedAt: project.updated_at
+    }))
+
+    return NextResponse.json(formattedProjects)
   } catch (error) {
     console.error('Erreur récupération projets:', error)
     return NextResponse.json(
