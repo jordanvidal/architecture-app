@@ -30,7 +30,7 @@ interface ProjectFile {
     lastName?: string
     email: string
   }
-  createdAt: string
+  created_at: string
 }
 
 interface FilesPlansModuleProps {
@@ -398,7 +398,7 @@ export default function FilesPlansModule({ projectId, spaces = [] }: FilesPlansM
                       </span>
                       <span>
                         <Calendar className="w-3 h-3 inline mr-1" />
-                        {new Date(file.createdAt).toLocaleDateString('fr-FR')}
+                        {new Date(file.created_at).toLocaleDateString('fr-FR')}
                       </span>
                     </div>
                   </div>
@@ -501,7 +501,7 @@ export default function FilesPlansModule({ projectId, spaces = [] }: FilesPlansM
                 <div>
                   <span className="text-slate-600">Date d'upload:</span>
                   <p className="text-slate-900 font-medium">
-                    {new Date(selectedFile.createdAt).toLocaleDateString('fr-FR', {
+                    {new Date(selectedFile.created_at).toLocaleDateString('fr-FR', {
                       day: 'numeric',
                       month: 'long',
                       year: 'numeric',

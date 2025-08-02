@@ -16,7 +16,7 @@ export async function DELETE(
 
   try {
     // Récupérer le fichier pour avoir l'URL
-    const file = await prisma.spaceFile.findUnique({
+    const file = await prisma.spacesFile.findUnique({
       where: { id: params.id }
     })
 
@@ -33,7 +33,7 @@ export async function DELETE(
     }
 
     // Supprimer de la base de données
-    await prisma.spaceFile.delete({
+    await prisma.spacesFile.delete({
       where: { id: params.id }
     })
 

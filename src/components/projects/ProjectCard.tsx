@@ -6,7 +6,7 @@ interface Project {
   budgetTotal: number
   budgetSpent: number
   progressPercentage: number
-  createdAt: string
+  created_at: string
   imageUrl?: string
 }
 
@@ -77,7 +77,7 @@ export default function ProjectCard({ project, onImageUpload }: ProjectCardProps
             </span>
           </div>
           <div className="text-slate-500">
-            {new Date(project.createdAt).toLocaleDateString('fr-FR')}
+            {new Date(project.created_at).toLocaleDateString('fr-FR')}
           </div>
         </div>
       </a>

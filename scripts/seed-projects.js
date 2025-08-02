@@ -7,7 +7,7 @@ async function main() {
   console.log('🏗️ Création des projets de test...\n')
 
   // Récupérer l'utilisateur agence
-  const agenceUser = await prisma.user.findUnique({
+  const agenceUser = await prisma.User.findUnique({
     where: { email: 'marie.dubois@agence.com' }
   })
 
@@ -72,7 +72,7 @@ async function main() {
       console.log(`✅ Projet "${project.name}" créé`)
 
       // Créer un espace par défaut pour chaque projet
-      const defaultSpace = await prisma.space.create({
+      const defaultSpace = await prisma.spaces.create({
         data: {
           name: 'Espace Principal',
           type: 'SALON',

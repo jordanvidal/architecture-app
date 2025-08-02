@@ -43,8 +43,8 @@ model User {
   password         String?
   lastLoginAt      DateTime?
   role             UserRole           @default(CLIENT)
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime
+  created_at        DateTime           @default(now())
+  updated_at        DateTime
   Account          Account[]
   Session          Session[]
   contacts         contacts[]
@@ -53,6 +53,7 @@ model User {
   projects         projects[]
   resource_library resource_library[]
   space_files      space_files[]
+  prescriptionDocuments PrescriptionDocument[]
 }
 
 model VerificationToken {
@@ -69,8 +70,8 @@ model brands {
   website   String?
   country   String?
   logo      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime
+  created_at DateTime @default(now())
+  updated_at DateTime
 }
 
 model contacts {
@@ -85,10 +86,10 @@ model contacts {
   contactType      ContactType
   isSupplier       Boolean            @default(false)
   isReseller       Boolean            @default(false)
-  createdBy        String
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime
-  User             User               @relation(fields: [createdBy], references: [id])
+  created_by        String
+  created_at        DateTime           @default(now())
+  updated_at        DateTime
+  User             User               @relation(fields: [created_by], references: [id])
   prescriptions    prescriptions[]
   resource_library resource_library[]
 }
@@ -99,11 +100,12 @@ model prescription_categories {
   description      String?
   icon             String?
   colorHex         String?
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime
+  created_at        DateTime           @default(now())
+  updated_at        DateTime
   prescriptions    prescriptions[]
   resource_library resource_library[]
 }
+
 
 model prescription_spaces {
   id             String        @id
@@ -132,16 +134,36 @@ model prescriptions {
   supplier                String?
   productUrl              String?
   notes                   String?
-  createdBy               String
-  createdAt               DateTime                @default(now())
-  updatedAt               DateTime
+  created_by               String
+  created_at               DateTime                @default(now())
+  updated_at               DateTime
   contactId               String?
   prescription_spaces     prescription_spaces[]
   prescription_categories prescription_categories @relation(fields: [categoryId], references: [id])
   contacts                contacts?               @relation(fields: [contactId], references: [id])
-  User                    User                    @relation(fields: [createdBy], references: [id])
+  User                    User                    @relation(fields: [created_by], references: [id])
   projects                projects                @relation(fields: [projectId], references: [id], onDelete: Cascade)
   spaces                  spaces?                 @relation(fields: [spaceId], references: [id])
+  documents               PrescriptionDocument[]
+}
+
+model PrescriptionDocument {
+  id             String       @id @default(cuid())
+  name           String
+  originalName   String
+  type           FileType
+  mimeType       String
+  size           Int
+  url            String
+  description    String?
+  prescriptionId String
+  uploadedBy     String
+  created_at      DateTime     @default(now())
+  updated_at      DateTime     @updated_at
+  prescription   prescriptions @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  uploader       User         @relation(fields: [uploadedBy], references: [id])
+
+  @@map("prescription_documents")
 }
 
 model project_files {
@@ -157,8 +179,8 @@ model project_files {
   projectId    String
   spaceId      String?
   uploadedBy   String
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime
+  created_at    DateTime     @default(now())
+  updated_at    DateTime
   projects     projects     @relation(fields: [projectId], references: [id], onDelete: Cascade)
   spaces       spaces?      @relation(fields: [spaceId], references: [id])
   User         User         @relation(fields: [uploadedBy], references: [id])
@@ -222,9 +244,9 @@ model resource_library {
   imageUrl                String?
   tags                    String[]
   isFavorite              Boolean                 @default(false)
-  createdBy               String
-  createdAt               DateTime                @default(now())
-  updatedAt               DateTime
+  created_by               String
+  created_at               DateTime                @default(now())
+  updated_at               DateTime
   categoryPath            String[]
   contactId               String?
   countryOrigin           String?
@@ -236,7 +258,7 @@ model resource_library {
   price                   Float?
   prescription_categories prescription_categories @relation(fields: [categoryId], references: [id])
   contacts                contacts?               @relation(fields: [contactId], references: [id])
-  User                    User                    @relation(fields: [createdBy], references: [id])
+  User                    User                    @relation(fields: [created_by], references: [id])
 }
 
 model space_files {
@@ -249,8 +271,8 @@ model space_files {
   description String?
   spaceId     String
   uploadedBy  String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime
+  created_at   DateTime @default(now())
+  updated_at   DateTime
   spaces      spaces   @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   User        User     @relation(fields: [uploadedBy], references: [id])
 }
@@ -262,8 +284,8 @@ model spaces {
   description         String?
   surfaceM2           Float?
   projectId           String
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime
+  created_at           DateTime              @default(now())
+  updated_at           DateTime
   prescription_spaces prescription_spaces[]
   prescriptions       prescriptions[]
   project_files       project_files[]

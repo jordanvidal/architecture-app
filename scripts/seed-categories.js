@@ -46,7 +46,7 @@ async function main() {
   ]
 
   for (const categoryData of categories) {
-    const category = await prisma.prescriptionCategory.upsert({
+    const category = await prisma.prescriptionsCategory.upsert({
       where: { name: categoryData.name },
       update: categoryData,
       create: categoryData

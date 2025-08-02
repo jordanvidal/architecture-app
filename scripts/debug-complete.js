@@ -27,10 +27,10 @@ async function main() {
       budgetTotal: true,
       budgetSpent: true,
       progressPercentage: true,
-      createdAt: true,
+      created_at: true,
       imageUrl: true
     },
-    orderBy: { createdAt: 'desc' }
+    orderBy: { created_at: 'desc' }
   })
 
   console.log(`   Nombre de projets retournés: ${apiResult.length}`)

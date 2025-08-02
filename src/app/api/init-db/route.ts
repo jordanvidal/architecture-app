@@ -22,7 +22,7 @@ export async function GET() {
     const prisma = new PrismaClient()
     
     // Test de connexion
-    const userCount = await prisma.user.count()
+    const userCount = await prisma.User.count()
     
     await prisma.$disconnect()
     
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
     const hashedPassword = await bcrypt.hash('Demo2024!', 10)
     
     // Créer l'utilisateur
-    const user = await prisma.user.upsert({
+    const user = await prisma.User.upsert({
       where: { email: 'marie.dubois@agence.com' },
       update: {},
       create: {
@@ -80,7 +80,7 @@ export async function POST(request: Request) {
     ]
     
     for (const cat of categories) {
-      await prisma.prescriptionCategory.upsert({
+      await prisma.prescriptionsCategory.upsert({
         where: { name: cat.name },
         update: {},
         create: cat,

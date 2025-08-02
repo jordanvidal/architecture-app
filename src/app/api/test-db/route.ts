@@ -21,7 +21,7 @@ export async function GET() {
     })
     
     // Test simple - compter les utilisateurs
-    const userCount = await prisma.user.count()
+    const userCount = await prisma.User.count()
     
     return NextResponse.json({ 
       success: true,

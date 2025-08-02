@@ -148,7 +148,7 @@ CREATE TABLE public.auth_tokens (
     "userId" text NOT NULL,
     "expiresAt" timestamp(3) without time zone NOT NULL,
     "usedAt" timestamp(3) without time zone,
-    "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+    "created_at" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 
@@ -166,8 +166,8 @@ CREATE TABLE public.budget_lines (
     currency text DEFAULT 'EUR'::text NOT NULL,
     "phaseId" text NOT NULL,
     category public.budget_category DEFAULT 'OTHER'::public.budget_category NOT NULL,
-    "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "updatedAt" timestamp(3) without time zone NOT NULL
+    "created_at" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "updated_at" timestamp(3) without time zone NOT NULL
 );
 
 
@@ -182,8 +182,8 @@ CREATE TABLE public.comments (
     body text NOT NULL,
     "projectId" text NOT NULL,
     "authorId" text NOT NULL,
-    "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "updatedAt" timestamp(3) without time zone NOT NULL
+    "created_at" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "updated_at" timestamp(3) without time zone NOT NULL
 );
 
 
@@ -201,8 +201,8 @@ CREATE TABLE public.documents (
     size integer NOT NULL,
     "projectId" text NOT NULL,
     "uploadedBy" text NOT NULL,
-    "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "updatedAt" timestamp(3) without time zone NOT NULL
+    "created_at" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "updated_at" timestamp(3) without time zone NOT NULL
 );
 
 
@@ -218,7 +218,7 @@ CREATE TABLE public.notifications (
     type public.notification_type NOT NULL,
     payload jsonb NOT NULL,
     "readAt" timestamp(3) without time zone,
-    "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+    "created_at" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 
@@ -237,8 +237,8 @@ CREATE TABLE public.phases (
     "endDate" timestamp(3) without time zone,
     "projectId" text NOT NULL,
     "order" integer DEFAULT 0 NOT NULL,
-    "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "updatedAt" timestamp(3) without time zone NOT NULL
+    "created_at" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "updated_at" timestamp(3) without time zone NOT NULL
 );
 
 
@@ -257,8 +257,8 @@ CREATE TABLE public.projects (
     "endDate" timestamp(3) without time zone,
     budget integer,
     "clientId" text NOT NULL,
-    "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "updatedAt" timestamp(3) without time zone NOT NULL
+    "created_at" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "updated_at" timestamp(3) without time zone NOT NULL
 );
 
 
@@ -277,8 +277,8 @@ CREATE TABLE public.tasks (
     "dueDate" timestamp(3) without time zone,
     "phaseId" text NOT NULL,
     "assigneeId" text,
-    "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "updatedAt" timestamp(3) without time zone NOT NULL
+    "created_at" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "updated_at" timestamp(3) without time zone NOT NULL
 );
 
 
@@ -292,8 +292,8 @@ CREATE TABLE public.users (
     id text NOT NULL,
     email text NOT NULL,
     role public.user_roles DEFAULT 'CLIENT'::public.user_roles NOT NULL,
-    "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "updatedAt" timestamp(3) without time zone NOT NULL
+    "created_at" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "updated_at" timestamp(3) without time zone NOT NULL
 );
 
 
@@ -312,7 +312,7 @@ bd9ddbe2-7703-4a35-9723-45d9a4e364c7	fb99239f016e4e096bad2278c5b6923a6301e4f53f7
 -- Data for Name: auth_tokens; Type: TABLE DATA; Schema: public; Owner: archiapp
 --
 
-COPY public.auth_tokens (id, token, "userId", "expiresAt", "usedAt", "createdAt") FROM stdin;
+COPY public.auth_tokens (id, token, "userId", "expiresAt", "usedAt", "created_at") FROM stdin;
 \.
 
 
@@ -320,7 +320,7 @@ COPY public.auth_tokens (id, token, "userId", "expiresAt", "usedAt", "createdAt"
 -- Data for Name: budget_lines; Type: TABLE DATA; Schema: public; Owner: archiapp
 --
 
-COPY public.budget_lines (id, label, description, "amountCents", currency, "phaseId", category, "createdAt", "updatedAt") FROM stdin;
+COPY public.budget_lines (id, label, description, "amountCents", currency, "phaseId", category, "created_at", "updated_at") FROM stdin;
 \.
 
 
@@ -328,7 +328,7 @@ COPY public.budget_lines (id, label, description, "amountCents", currency, "phas
 -- Data for Name: comments; Type: TABLE DATA; Schema: public; Owner: archiapp
 --
 
-COPY public.comments (id, body, "projectId", "authorId", "createdAt", "updatedAt") FROM stdin;
+COPY public.comments (id, body, "projectId", "authorId", "created_at", "updated_at") FROM stdin;
 \.
 
 
@@ -336,7 +336,7 @@ COPY public.comments (id, body, "projectId", "authorId", "createdAt", "updatedAt
 -- Data for Name: documents; Type: TABLE DATA; Schema: public; Owner: archiapp
 --
 
-COPY public.documents (id, key, filename, "mimeType", size, "projectId", "uploadedBy", "createdAt", "updatedAt") FROM stdin;
+COPY public.documents (id, key, filename, "mimeType", size, "projectId", "uploadedBy", "created_at", "updated_at") FROM stdin;
 \.
 
 
@@ -344,7 +344,7 @@ COPY public.documents (id, key, filename, "mimeType", size, "projectId", "upload
 -- Data for Name: notifications; Type: TABLE DATA; Schema: public; Owner: archiapp
 --
 
-COPY public.notifications (id, "userId", type, payload, "readAt", "createdAt") FROM stdin;
+COPY public.notifications (id, "userId", type, payload, "readAt", "created_at") FROM stdin;
 \.
 
 
@@ -352,7 +352,7 @@ COPY public.notifications (id, "userId", type, payload, "readAt", "createdAt") F
 -- Data for Name: phases; Type: TABLE DATA; Schema: public; Owner: archiapp
 --
 
-COPY public.phases (id, name, description, status, "startDate", "endDate", "projectId", "order", "createdAt", "updatedAt") FROM stdin;
+COPY public.phases (id, name, description, status, "startDate", "endDate", "projectId", "order", "created_at", "updated_at") FROM stdin;
 \.
 
 
@@ -360,7 +360,7 @@ COPY public.phases (id, name, description, status, "startDate", "endDate", "proj
 -- Data for Name: projects; Type: TABLE DATA; Schema: public; Owner: archiapp
 --
 
-COPY public.projects (id, name, description, status, "startDate", "endDate", budget, "clientId", "createdAt", "updatedAt") FROM stdin;
+COPY public.projects (id, name, description, status, "startDate", "endDate", budget, "clientId", "created_at", "updated_at") FROM stdin;
 \.
 
 
@@ -368,7 +368,7 @@ COPY public.projects (id, name, description, status, "startDate", "endDate", bud
 -- Data for Name: tasks; Type: TABLE DATA; Schema: public; Owner: archiapp
 --
 
-COPY public.tasks (id, title, description, status, priority, "dueDate", "phaseId", "assigneeId", "createdAt", "updatedAt") FROM stdin;
+COPY public.tasks (id, title, description, status, priority, "dueDate", "phaseId", "assigneeId", "created_at", "updated_at") FROM stdin;
 \.
 
 
@@ -376,7 +376,7 @@ COPY public.tasks (id, title, description, status, priority, "dueDate", "phaseId
 -- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: archiapp
 --
 
-COPY public.users (id, email, role, "createdAt", "updatedAt") FROM stdin;
+COPY public.users (id, email, role, "created_at", "updated_at") FROM stdin;
 \.
 
 

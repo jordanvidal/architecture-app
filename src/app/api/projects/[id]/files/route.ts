@@ -41,7 +41,7 @@ export async function GET(
     if (category) where.category = category
 
     // Récupérer les fichiers
-    const files = await prisma.projectFile.findMany({
+    const files = await prisma.project_files.findMany({
       where,
       include: {
         space: {
@@ -51,7 +51,7 @@ export async function GET(
           select: { firstName: true, lastName: true, email: true }
         }
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { created_at: 'desc' }
     })
 
     return NextResponse.json(files)
@@ -150,7 +150,7 @@ export async function POST(
     const fileUrl = `/uploads/projects/${projectId}/${fileName}`
 
     // Enregistrer en base
-    const newFile = await prisma.projectFile.create({
+    const newFile = await prisma.project_files.create({
       data: {
         name: fileName,
         originalName: file.name,

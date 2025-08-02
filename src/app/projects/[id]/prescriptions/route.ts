@@ -22,6 +22,7 @@ export async function GET(
       include: {
         space: true,
         category: true,
+        documents: true, // Inclure les documents
         creator: {
           select: {
             firstName: true,

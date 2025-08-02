@@ -30,26 +30,26 @@ async function migrateData() {
 
     // 2. Créer des contacts depuis les fournisseurs existants
     console.log('\n👥 Création des contacts fournisseurs...')
-    const uniqueSuppliers = await prisma.resourceLibrary.findMany({
+    const uniqueSuppliers = await prisma.resource_library.findMany({
       where: { supplier: { not: null } },
       select: { supplier: true },
       distinct: ['supplier']
     })
 
-    const defaultUser = await prisma.user.findFirst()
+    const defaultUser = await prisma.User.findFirst()
     let contactsCreated = 0
     
     if (defaultUser) {
       for (const { supplier } of uniqueSuppliers) {
         if (supplier) {
           try {
-            await prisma.contact.create({
+            await prisma.contacts.create({
               data: {
                 name: supplier,
                 company: supplier,
                 contactType: 'FOURNISSEUR',
                 isSupplier: true,
-                createdBy: defaultUser.id
+                created_by: defaultUser.id
               }
             })
             contactsCreated++
@@ -64,10 +64,10 @@ async function migrateData() {
 
     // 3. Afficher les infos sur les prix
     console.log('\n💰 Analyse des prix...')
-    const resourcesWithPriceMin = await prisma.resourceLibrary.count({
+    const resourcesWithPriceMin = await prisma.resource_library.count({
       where: { priceMin: { not: null } }
     })
-    const resourcesWithPriceMax = await prisma.resourceLibrary.count({
+    const resourcesWithPriceMax = await prisma.resource_library.count({
       where: { priceMax: { not: null } }
     })
     
@@ -84,10 +84,10 @@ async function migrateData() {
       projetAvecEmails: await prisma.project.count({ 
         where: { clientEmails: { isEmpty: false } } 
       }),
-      ressources: await prisma.resourceLibrary.count(),
-      contacts: await prisma.contact.count(),
-      prescriptions: await prisma.prescription.count(),
-      espaces: await prisma.space.count()
+      ressources: await prisma.resource_library.count(),
+      contacts: await prisma.contacts.count(),
+      prescriptions: await prisma.prescriptions.count(),
+      espaces: await prisma.spaces.count()
     }
     
     console.log(`- ${stats.projets} projets total (${stats.projetAvecEmails} avec emails migrés)`)

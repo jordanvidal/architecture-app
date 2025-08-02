@@ -6,8 +6,8 @@ const prisma = new PrismaClient()
 async function main() {
   // Récupérer les données nécessaires
   const projects = await prisma.project.findMany()
-  const categories = await prisma.prescriptionCategory.findMany()
-  const agenceUser = await prisma.user.findUnique({
+  const categories = await prisma.prescriptionsCategory.findMany()
+  const agenceUser = await prisma.User.findUnique({
     where: { email: 'marie.dubois@agence.com' }
   })
 
@@ -23,7 +23,7 @@ async function main() {
   const villaModerne = projects.find(p => p.name === 'Villa Moderne')
   if (villaModerne) {
     // Créer quelques espaces pour ce projet
-    const salon = await prisma.space.upsert({
+    const salon = await prisma.spaces.upsert({
       where: { 
         id: 'temp-salon-id' // On va utiliser findFirst puis create
       },
@@ -36,7 +36,7 @@ async function main() {
       }
     }).catch(async () => {
       // Si l'upsert échoue, on fait findFirst puis create
-      const existingSalon = await prisma.space.findFirst({
+      const existingSalon = await prisma.spaces.findFirst({
         where: { 
           projectId: villaModerne.id,
           name: 'Salon'
@@ -46,7 +46,7 @@ async function main() {
       if (existingSalon) {
         return existingSalon
       } else {
-        return await prisma.space.create({
+        return await prisma.spaces.create({
           data: {
             projectId: villaModerne.id,
             name: 'Salon',
@@ -57,7 +57,7 @@ async function main() {
       }
     })
 
-    const cuisine = await prisma.space.upsert({
+    const cuisine = await prisma.spaces.upsert({
       where: { 
         id: 'temp-cuisine-id'
       },
@@ -69,7 +69,7 @@ async function main() {
         surfaceM2: 18.2
       }
     }).catch(async () => {
-      const existingCuisine = await prisma.space.findFirst({
+      const existingCuisine = await prisma.spaces.findFirst({
         where: { 
           projectId: villaModerne.id,
           name: 'Cuisine'
@@ -79,7 +79,7 @@ async function main() {
       if (existingCuisine) {
         return existingCuisine
       } else {
-        return await prisma.space.create({
+        return await prisma.spaces.create({
           data: {
             projectId: villaModerne.id,
             name: 'Cuisine',
@@ -191,11 +191,11 @@ async function main() {
     // Créer les prescriptions
     for (const prescData of prescriptions) {
       if (prescData.categoryId) {
-        await prisma.prescription.create({
+        await prisma.prescriptions.create({
           data: {
             ...prescData,
             projectId: villaModerne.id,
-            createdBy: agenceUser.id
+            created_by: agenceUser.id
           }
         })
         console.log(`✅ Prescription créée: ${prescData.name}`)
@@ -206,12 +206,12 @@ async function main() {
   // Quelques prescriptions pour Appartement Parisien
   const appartParis = projects.find(p => p.name === 'Appartement Parisien')
   if (appartParis) {
-    const salon = await prisma.space.findFirst({
+    const salon = await prisma.spaces.findFirst({
       where: { 
         projectId: appartParis.id,
         name: 'Salon'
       }
-    }) || await prisma.space.create({
+    }) || await prisma.spaces.create({
       data: {
         projectId: appartParis.id,
         name: 'Salon',
@@ -254,11 +254,11 @@ async function main() {
 
     for (const prescData of prescriptions) {
       if (prescData.categoryId) {
-        await prisma.prescription.create({
+        await prisma.prescriptions.create({
           data: {
             ...prescData,
             projectId: appartParis.id,
-            createdBy: agenceUser.id
+            created_by: agenceUser.id
           }
         })
         console.log(`✅ Prescription créée: ${prescData.name}`)
@@ -269,7 +269,7 @@ async function main() {
   console.log('\n🎉 Prescriptions de test créées avec succès!')
   
   // Statistiques
-  const totalPrescriptions = await prisma.prescription.count()
+  const totalPrescriptions = await prisma.prescriptions.count()
   console.log(`📊 Total prescriptions en base: ${totalPrescriptions}`)
 }
 

@@ -15,6 +15,40 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
 
+  // Configuration pour les API Routes
+  // Permet l'upload de fichiers jusqu'à 10MB
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '10mb',
+    },
+  },
+
+  // Configuration pour servir les fichiers statiques uploadés
+  // Ceci permet d'accéder aux fichiers dans /public/uploads
+  async rewrites() {
+    return [
+      {
+        source: '/uploads/:path*',
+        destination: '/uploads/:path*',
+      },
+    ]
+  },
+
+  // Configuration des headers pour les fichiers uploadés
+  async headers() {
+    return [
+      {
+        source: '/uploads/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=3600',
+          },
+        ],
+      },
+    ]
+  },
+
   // Ajoutez ici toute autre configuration existante
   // Par exemple :
   // images: {

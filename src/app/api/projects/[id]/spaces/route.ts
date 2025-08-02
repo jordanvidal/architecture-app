@@ -30,14 +30,14 @@ export async function GET(
     }
 
     // Récupérer les espaces avec le nombre de prescriptions
-    const spaces = await prisma.space.findMany({
+    const spaces = await prisma.spaces.findMany({
       where: { projectId },
       include: {
         _count: {
           select: { prescriptions: true }
         }
       },
-      orderBy: { createdAt: 'asc' }
+      orderBy: { created_at: 'asc' }
     })
 
     return NextResponse.json(spaces)
@@ -86,7 +86,7 @@ export async function POST(
     }
 
     // Créer l'espace
-    const newSpace = await prisma.space.create({
+    const newSpace = await prisma.spaces.create({
       data: {
         name,
         type,

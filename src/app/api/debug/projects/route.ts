@@ -14,7 +14,7 @@ export async function GET() {
     })
 
     // Récupérer tous les utilisateurs
-    const allUsers = await prisma.user.findMany()
+    const allUsers = await prisma.User.findMany()
 
     return NextResponse.json({
       projectCount: allProjects.length,

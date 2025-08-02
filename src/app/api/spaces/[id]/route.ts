@@ -18,7 +18,7 @@ export async function GET(
 
     const spaceId = params.id
 
-    const space = await prisma.space.findFirst({
+    const space = await prisma.spaces.findFirst({
       where: {
         id: spaceId,
         project: {
@@ -36,7 +36,7 @@ export async function GET(
               select: { firstName: true, lastName: true, email: true }
             }
           },
-          orderBy: { createdAt: 'desc' }
+          orderBy: { created_at: 'desc' }
         },
         _count: {
           select: { prescriptions: true }
@@ -74,7 +74,7 @@ export async function PUT(
     const { name, type, description, surfaceM2 } = body
 
     // Vérifier que l'espace existe et appartient à l'utilisateur
-    const existingSpace = await prisma.space.findFirst({
+    const existingSpace = await prisma.spaces.findFirst({
       where: {
         id: spaceId,
         project: {
@@ -88,7 +88,7 @@ export async function PUT(
     }
 
     // Mettre à jour l'espace
-    const updatedSpace = await prisma.space.update({
+    const updatedSpace = await prisma.spaces.update({
       where: { id: spaceId },
       data: {
         name: name || existingSpace.name,
@@ -127,7 +127,7 @@ export async function DELETE(
     const spaceId = params.id
 
     // Vérifier que l'espace existe et appartient à l'utilisateur
-    const existingSpace = await prisma.space.findFirst({
+    const existingSpace = await prisma.spaces.findFirst({
       where: {
         id: spaceId,
         project: {
@@ -154,7 +154,7 @@ export async function DELETE(
     }
 
     // Supprimer l'espace
-    await prisma.space.delete({
+    await prisma.spaces.delete({
       where: { id: spaceId }
     })
 

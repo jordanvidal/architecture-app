@@ -6,7 +6,7 @@ const prisma = new PrismaClient()
 async function main() {
   console.log('✏️ Renommage de Marie Dubois...')
 
-  const result = await prisma.user.updateMany({
+  const result = await prisma.User.updateMany({
     where: { email: 'marie.dubois@agence.com' },
     data: {
       firstName: 'Noemie',
@@ -21,7 +21,7 @@ async function main() {
   }
 
   // Vérification
-  const user = await prisma.user.findUnique({
+  const user = await prisma.User.findUnique({
     where: { email: 'marie.dubois@agence.com' },
     select: { firstName: true, lastName: true, email: true }
   })

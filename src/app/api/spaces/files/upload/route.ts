@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     await writeFile(filePath, buffer)
     
     // Créer l'entrée en base de données
-    const spaceFile = await prisma.spaceFile.create({
+    const spaceFile = await prisma.spacesFile.create({
       data: {
         filename: file.name,
         url: `/uploads/spaces/${fileName}`,

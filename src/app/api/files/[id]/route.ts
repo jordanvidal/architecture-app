@@ -19,7 +19,7 @@ export async function GET(
 
     const fileId = params.id
 
-    const file = await prisma.projectFile.findFirst({
+    const file = await prisma.project_files.findFirst({
       where: {
         id: fileId,
         project: {
@@ -69,7 +69,7 @@ export async function PUT(
     const { name, description, category, spaceId } = body
 
     // Vérifier que le fichier existe et appartient à l'utilisateur
-    const existingFile = await prisma.projectFile.findFirst({
+    const existingFile = await prisma.project_files.findFirst({
       where: {
         id: fileId,
         project: {
@@ -83,7 +83,7 @@ export async function PUT(
     }
 
     // Mettre à jour le fichier
-    const updatedFile = await prisma.projectFile.update({
+    const updatedFile = await prisma.project_files.update({
       where: { id: fileId },
       data: {
         name: name || existingFile.name,
@@ -125,7 +125,7 @@ export async function DELETE(
     const fileId = params.id
 
     // Vérifier que le fichier existe et appartient à l'utilisateur
-    const existingFile = await prisma.projectFile.findFirst({
+    const existingFile = await prisma.project_files.findFirst({
       where: {
         id: fileId,
         project: {
@@ -147,7 +147,7 @@ export async function DELETE(
     }
 
     // Supprimer de la base de données
-    await prisma.projectFile.delete({
+    await prisma.project_files.delete({
       where: { id: fileId }
     })
 

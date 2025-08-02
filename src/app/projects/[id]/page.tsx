@@ -23,7 +23,7 @@ interface Project {
   progressPercentage: number
   startDate: string
   endDate?: string
-  createdAt: string
+  created_at: string
   deliveryAddress?: {
     contactName: string
     company?: string
@@ -66,7 +66,7 @@ interface Prescription {
   validatedAt?: string
   orderedAt?: string
   deliveredAt?: string
-  createdAt: string
+  created_at: string
   space: {
     id: string
     name: string
@@ -499,7 +499,7 @@ export default function ProjectDetailPage() {
             onPrescriptionClick={openModal}
             onPrescriptionsUpdated={() => fetchPrescriptions(project.id)}
             onNavigateToLibrary={() => setShowPrescriptionModal(true)}
-            onManageSpaces={() => setShowSpaceManager(true)}
+            onManageSpaces={() => setShowSpaceManager(true)}  // Cette ligne
           />
         )}
 
@@ -762,7 +762,7 @@ export default function ProjectDetailPage() {
                             {comment.creator.firstName} {comment.creator.lastName}
                           </div>
                           <div className="text-xs text-slate-500">
-                            {new Date(comment.createdAt).toLocaleDateString('fr-FR', {
+                            {new Date(comment.created_at).toLocaleDateString('fr-FR', {
                               day: 'numeric',
                               month: 'short',
                               hour: '2-digit',
@@ -783,7 +783,7 @@ export default function ProjectDetailPage() {
               <div className="text-xs sm:text-sm text-slate-500">
                 Créé par {selectedPrescription.creator.firstName} {selectedPrescription.creator.lastName}
                 <br />
-                le {new Date(selectedPrescription.createdAt).toLocaleDateString('fr-FR')}
+                le {new Date(selectedPrescription.created_at).toLocaleDateString('fr-FR')}
               </div>
               <div className="flex gap-2">
                 <button className="flex-1 sm:flex-initial px-3 sm:px-4 py-1.5 sm:py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors text-sm">

@@ -15,7 +15,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
 
-    const user = await prisma.user.findUnique({
+    const user = await prisma.User.findUnique({
       where: { email: session.user.email }
     })
 
@@ -36,7 +36,7 @@ export async function PUT(
     }
 
     // Vérifier que l'espace existe et appartient à un projet de l'utilisateur
-    const space = await prisma.space.findFirst({
+    const space = await prisma.spaces.findFirst({
       where: {
         id: spaceId,
         project: {
@@ -50,7 +50,7 @@ export async function PUT(
     }
 
     // Mettre à jour l'espace
-    const updatedSpace = await prisma.space.update({
+    const updatedSpace = await prisma.spaces.update({
       where: { id: spaceId },
       data: {
         name,
@@ -86,7 +86,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
 
-    const user = await prisma.user.findUnique({
+    const user = await prisma.User.findUnique({
       where: { email: session.user.email }
     })
 
@@ -97,7 +97,7 @@ export async function DELETE(
     const spaceId = params.id
 
     // Vérifier que l'espace existe et appartient à un projet de l'utilisateur
-    const space = await prisma.space.findFirst({
+    const space = await prisma.spaces.findFirst({
       where: {
         id: spaceId,
         project: {
@@ -124,7 +124,7 @@ export async function DELETE(
     }
 
     // Supprimer l'espace
-    await prisma.space.delete({
+    await prisma.spaces.delete({
       where: { id: spaceId }
     })
 

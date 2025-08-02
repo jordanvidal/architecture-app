@@ -1,11 +1,10 @@
 // src/app/api/library/resources/route.ts
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
-import { authOptions } from '../../../../lib/auth'
-import prisma from '../../../../lib/prisma'
+import { authOptions } from '@/lib/auth'
+import prisma from '@/lib/prisma'
 
-// GET - Récupérer toutes les ressources
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions)
     
@@ -13,10 +12,11 @@ export async function GET() {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
 
-    const resources = await prisma.resourceLibrary.findMany({
+    // Utiliser resource_library au lieu de resourceLibrary
+    const resources = await prisma.resource_library.findMany({
       include: {
-        category: true,
-        creator: {
+        prescription_categories: true,
+        User: {
           select: {
             firstName: true,
             lastName: true,
@@ -24,69 +24,54 @@ export async function GET() {
           }
         }
       },
-      orderBy: [
-        { isFavorite: 'desc' },
-        { createdAt: 'desc' }
-      ]
+      orderBy: {
+        created_at: 'desc'
+      }
     })
 
-    return NextResponse.json(resources)
+    // Formater les données pour correspondre à ce que le frontend attend
+    const formattedResources = resources.map(resource => ({
+      ...resource,
+      category: resource.prescription_categories,
+      creator: resource.User
+    }))
+
+    return NextResponse.json(formattedResources)
   } catch (error) {
     console.error('Erreur GET resources:', error)
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
   }
 }
 
-// POST - Créer une nouvelle ressource
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
 
-    const body = await request.json()
-    const {
-      name,
-      description,
-      categoryId,
-      brand,
-      reference,
-      productUrl,
-      priceMin,
-      priceMax,
-      supplier,
-      availability,
-      imageUrl,
-      tags = []
-    } = body
+    const user = await prisma.User.findUnique({
+      where: { email: session.user.email }
+    })
 
-    if (!name || !categoryId) {
-      return NextResponse.json({ 
-        error: 'Nom et catégorie requis' 
-      }, { status: 400 })
+    if (!user) {
+      return NextResponse.json({ error: 'Utilisateur non trouvé' }, { status: 404 })
     }
 
-    const resource = await prisma.resourceLibrary.create({
+    const body = await request.json()
+    
+    const resource = await prisma.resource_library.create({
       data: {
-        name,
-        description,
-        categoryId,
-        brand,
-        reference,
-        productUrl,
-        priceMin: priceMin ? parseFloat(priceMin) : null,
-        priceMax: priceMax ? parseFloat(priceMax) : null,
-        supplier,
-        availability,
-        imageUrl,
-        tags,
-        createdBy: session.user.id
+        ...body,
+        created_by: user.id,
+        categoryPath: body.categoryPath || [],
+        images: body.images || [],
+        tags: body.tags || []
       },
       include: {
-        category: true,
-        creator: {
+        prescription_categories: true,
+        User: {
           select: {
             firstName: true,
             lastName: true,
@@ -96,7 +81,14 @@ export async function POST(request: Request) {
       }
     })
 
-    return NextResponse.json(resource, { status: 201 })
+    // Formater la réponse
+    const formattedResource = {
+      ...resource,
+      category: resource.prescription_categories,
+      creator: resource.User
+    }
+
+    return NextResponse.json(formattedResource)
   } catch (error) {
     console.error('Erreur POST resource:', error)
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })

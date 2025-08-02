@@ -22,7 +22,7 @@ export async function GET(
       return NextResponse.json({ error: 'Utilisateur non trouvé' }, { status: 404 })
     }
 
-    const project = await prisma.project.findFirst({
+    const project = await prisma.projects.findFirst({
       where: { 
         id: params.id,
         created_by: user.id // Vérifier que l'utilisateur est le créateur
@@ -31,9 +31,9 @@ export async function GET(
         spaces: true,
         prescriptions: {
           include: {
-            category: true,
-            space: true,
-            creator: {
+            prescription_categories: true,
+            spaces: true,
+            User: {
               select: {
                 firstName: true,
                 lastName: true,
@@ -42,8 +42,8 @@ export async function GET(
             }
           }
         },
-        files: true,
-        creator: {
+        project_files: true,
+        User: {
           select: {
             firstName: true,
             lastName: true,
@@ -73,8 +73,8 @@ export async function GET(
       startDate: project.start_date,
       endDate: project.end_date,
       imageUrl: project.image_url,
-      createdAt: project.created_at,
-      updatedAt: project.updated_at,
+      created_at: project.created_at,
+      updated_at: project.updated_at,
       projectType: project.projectType,
       surfaceM2: project.surfaceM2,
       hasExterior: project.hasExterior,
@@ -94,13 +94,18 @@ export async function GET(
       } : null,
       billingAddresses: project.billing_addresses,
       spaces: project.spaces,
-      prescriptions: project.prescriptions,
-      files: project.files,
-      creator: project.creator,
+      prescriptions: project.prescriptions.map(p => ({
+        ...p,
+        category: p.prescription_categories,
+        space: p.spaces,
+        creator: p.User
+      })),
+      files: project.project_files,
+      creator: project.User,
       _count: {
         prescriptions: project.prescriptions.length,
         spaces: project.spaces.length,
-        files: project.files.length
+        files: project.project_files.length
       }
     }
 
@@ -133,7 +138,7 @@ export async function PUT(
     }
 
     // Vérifier que l'utilisateur est le créateur du projet
-    const existingProject = await prisma.project.findFirst({
+    const existingProject = await prisma.projects.findFirst({
       where: {
         id: params.id,
         created_by: user.id
@@ -148,7 +153,7 @@ export async function PUT(
     
     const validEmails = body.clientEmails?.filter((email: string) => email?.trim()) || []
 
-    const project = await prisma.project.update({
+    const project = await prisma.projects.update({
       where: { id: params.id },
       data: {
         name: body.name,
@@ -192,8 +197,8 @@ export async function PUT(
       startDate: project.start_date,
       endDate: project.end_date,
       imageUrl: project.image_url,
-      createdAt: project.created_at,
-      updatedAt: project.updated_at,
+      created_at: project.created_at,
+      updated_at: project.updated_at,
       projectType: project.projectType,
       surfaceM2: project.surfaceM2,
       hasExterior: project.hasExterior,
@@ -230,7 +235,7 @@ export async function DELETE(
     }
 
     // Vérifier que l'utilisateur est le créateur du projet
-    const existingProject = await prisma.project.findFirst({
+    const existingProject = await prisma.projects.findFirst({
       where: {
         id: params.id,
         created_by: user.id
@@ -241,7 +246,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Projet non trouvé ou accès refusé' }, { status: 404 })
     }
 
-    await prisma.project.delete({
+    await prisma.projects.delete({
       where: { id: params.id }
     })
 

@@ -19,7 +19,7 @@ interface Prescription {
   validatedAt?: string
   orderedAt?: string
   deliveredAt?: string
-  createdAt: string
+  created_at: string
   space: {
     id: string
     name: string

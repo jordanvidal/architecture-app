@@ -14,7 +14,7 @@ async function main() {
     console.log('✅ Password hashé:', hashedPassword.substring(0, 20) + '...')
 
     // Mettre à jour l'utilisateur existant ou le créer
-    const user = await prisma.user.upsert({
+    const user = await prisma.User.upsert({
       where: { email: 'marie.dubois@agence.com' },
       update: {
         firstName: 'Noemie',
@@ -36,7 +36,7 @@ async function main() {
     console.log('✅ Longueur du hash:', user.password?.length)
 
     // Vérification
-    const verification = await prisma.user.findUnique({
+    const verification = await prisma.User.findUnique({
       where: { email: 'marie.dubois@agence.com' },
       select: { id: true, email: true, password: true, role: true, firstName: true, lastName: true }
     })

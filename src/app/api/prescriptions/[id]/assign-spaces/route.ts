@@ -20,7 +20,7 @@ export async function PUT(
     const { spaceId } = body
 
     // Vérifier que la prescription existe et appartient à l'utilisateur
-    const prescription = await prisma.prescription.findFirst({
+    const prescription = await prisma.prescriptions.findFirst({
       where: {
         id: prescriptionId,
         creator: { id: session.user.id }
@@ -36,7 +36,7 @@ export async function PUT(
 
     // Si spaceId est fourni, vérifier que l'espace appartient au même projet
     if (spaceId) {
-      const space = await prisma.space.findFirst({
+      const space = await prisma.spaces.findFirst({
         where: {
           id: spaceId,
           projectId: prescription.projectId
@@ -52,7 +52,7 @@ export async function PUT(
     }
 
     // Mettre à jour la prescription
-    const updatedPrescription = await prisma.prescription.update({
+    const updatedPrescription = await prisma.prescriptions.update({
       where: { id: prescriptionId },
       data: {
         spaceId: spaceId || null
@@ -102,7 +102,7 @@ export async function GET(
     }
 
     // Récupérer les prescriptions sans espace assigné
-    const unassignedPrescriptions = await prisma.prescription.findMany({
+    const unassignedPrescriptions = await prisma.prescriptions.findMany({
       where: {
         projectId,
         spaceId: null
@@ -113,7 +113,7 @@ export async function GET(
           select: { firstName: true, lastName: true, email: true }
         }
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { created_at: 'desc' }
     })
 
     return NextResponse.json(unassignedPrescriptions)

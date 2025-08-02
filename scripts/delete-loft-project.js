@@ -22,7 +22,7 @@ async function main() {
   console.log('\n🧹 Suppression des données liées...')
 
   // 1. Supprimer les commentaires de prescriptions
-  const deletedComments = await prisma.prescriptionComment.deleteMany({
+  const deletedComments = await prisma.prescriptionsComment.deleteMany({
     where: {
       prescription: {
         projectId: loftProject.id
@@ -32,13 +32,13 @@ async function main() {
   console.log(`   ✅ ${deletedComments.count} commentaires de prescriptions supprimés`)
 
   // 2. Supprimer les prescriptions
-  const deletedPrescriptions = await prisma.prescription.deleteMany({
+  const deletedPrescriptions = await prisma.prescriptions.deleteMany({
     where: { projectId: loftProject.id }
   })
   console.log(`   ✅ ${deletedPrescriptions.count} prescriptions supprimées`)
 
   // 3. Supprimer les espaces
-  const deletedSpaces = await prisma.space.deleteMany({
+  const deletedSpaces = await prisma.spaces.deleteMany({
     where: { projectId: loftProject.id }
   })
   console.log(`   ✅ ${deletedSpaces.count} espaces supprimés`)

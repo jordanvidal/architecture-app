@@ -18,7 +18,7 @@ async function main() {
   for (const project of projects) {
     if (project.spaces.length === 0) {
       // Ajouter un espace par défaut
-      await prisma.space.create({
+      await prisma.spaces.create({
         data: {
           projectId: project.id,
           name: 'Espace Principal',

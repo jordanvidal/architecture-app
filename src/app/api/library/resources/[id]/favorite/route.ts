@@ -16,7 +16,7 @@ export async function PATCH(
     const params = await context.params
     const { isFavorite } = await request.json()
 
-    const resource = await prisma.resourceLibrary.update({
+    const resource = await prisma.resource_library.update({
       where: { id: params.id },
       data: { isFavorite },
       include: {
@@ -72,7 +72,7 @@ export async function PUT(
       }, { status: 400 })
     }
 
-    const resource = await prisma.resourceLibrary.update({
+    const resource = await prisma.resource_library.update({
       where: { id: params.id },
       data: {
         name,
@@ -120,7 +120,7 @@ export async function DELETE(
 
     const params = await context.params
 
-    await prisma.resourceLibrary.delete({
+    await prisma.resource_library.delete({
       where: { id: params.id }
     })
 

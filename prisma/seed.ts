@@ -53,12 +53,12 @@ async function main() {
   ]
 
   for (const category of categories) {
-    const existingCategory = await prisma.prescriptionCategory.findUnique({
+    const existingCategory = await prisma.prescriptionsCategory.findUnique({
       where: { name: category.name }
     })
 
     if (!existingCategory) {
-      await prisma.prescriptionCategory.create({
+      await prisma.prescriptionsCategory.create({
         data: category
       })
       console.log(`✅ Catégorie "${category.name}" créée`)

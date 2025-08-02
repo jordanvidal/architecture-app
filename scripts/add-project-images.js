@@ -34,7 +34,7 @@ async function main() {
   }
 
   const projects = await prisma.project.findMany({
-    orderBy: { createdAt: 'asc' }
+    orderBy: { created_at: 'asc' }
   })
 
   console.log(`🏠 Ajout d'images de luxe parisien à ${projects.length} projets...`)

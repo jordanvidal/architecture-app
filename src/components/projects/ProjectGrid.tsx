@@ -10,7 +10,7 @@ interface Project {
   budgetTotal: number
   budgetSpent: number
   progressPercentage: number
-  createdAt: string
+  created_at: string
   imageUrl?: string
 }
 

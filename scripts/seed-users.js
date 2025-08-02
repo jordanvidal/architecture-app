@@ -34,7 +34,7 @@ async function main() {
   ]
 
   for (const userData of users) {
-    const user = await prisma.user.upsert({
+    const user = await prisma.User.upsert({
       where: { email: userData.email },
       update: {},
       create: userData

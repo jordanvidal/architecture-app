@@ -23,7 +23,7 @@ async function main() {
     
     const result = await prisma.project.updateMany({
       where: { name: projectName },
-      data: { createdAt: newDate }
+      data: { created_at: newDate }
     })
 
     if (result.count > 0) {

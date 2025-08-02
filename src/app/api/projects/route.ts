@@ -23,10 +23,11 @@ export async function POST(request: NextRequest) {
     
     const validEmails = body.clientEmails?.filter((email: string) => email?.trim()) || []
 
-    const project = await prisma.project.create({
+    const project = await prisma.projects.create({
       data: {
+        id: require('crypto').randomUUID(),
         name: body.name,
-        client_name: body.clientName, // Notez: client_name au lieu de clientName
+        client_name: body.clientName,
         clientEmails: validEmails,
         projectType: body.projectType || null,
         surfaceM2: body.surfaceM2 ? parseFloat(body.surfaceM2) : null,
@@ -49,24 +50,12 @@ export async function POST(request: NextRequest) {
         end_date: body.endDate ? new Date(body.endDate) : null,
         status: 'BROUILLON',
         progress_percentage: 0,
-        created_by: user.id // Notez: created_by au lieu de createdBy
+        created_by: user.id,
+        updated_at: new Date()
       }
     })
 
-    // Transformer les données pour correspondre au format attendu par le frontend
-    const formattedProject = {
-      ...project,
-      clientName: project.client_name,
-      budgetTotal: project.budget_total,
-      budgetSpent: project.budget_spent,
-      progressPercentage: project.progress_percentage,
-      startDate: project.start_date,
-      endDate: project.end_date,
-      createdAt: project.created_at,
-      updatedAt: project.updated_at
-    }
-
-    return NextResponse.json(formattedProject)
+    return NextResponse.json(project)
   } catch (error) {
     console.error('Erreur création projet:', error)
     return NextResponse.json(
@@ -83,46 +72,20 @@ export async function GET() {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
 
-    // Récupérer l'utilisateur actuel
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    })
-
-    if (!user) {
-      return NextResponse.json({ error: 'Utilisateur non trouvé' }, { status: 404 })
-    }
-
-    // Filtrer les projets par l'utilisateur connecté
-    const projects = await prisma.project.findMany({
-      where: {
-        created_by: user.id // Filtrer par créateur
-      },
+    const projects = await prisma.projects.findMany({
       orderBy: { created_at: 'desc' },
       include: {
         _count: {
           select: {
             prescriptions: true,
             spaces: true,
-            files: true
+            project_files: true
           }
         }
       }
     })
 
-    // Transformer les données pour correspondre au format attendu par le frontend
-    const formattedProjects = projects.map(project => ({
-      ...project,
-      clientName: project.client_name,
-      budgetTotal: project.budget_total,
-      budgetSpent: project.budget_spent,
-      progressPercentage: project.progress_percentage,
-      startDate: project.start_date,
-      endDate: project.end_date,
-      createdAt: project.created_at,
-      updatedAt: project.updated_at
-    }))
-
-    return NextResponse.json(formattedProjects)
+    return NextResponse.json(projects)
   } catch (error) {
     console.error('Erreur récupération projets:', error)
     return NextResponse.json(
