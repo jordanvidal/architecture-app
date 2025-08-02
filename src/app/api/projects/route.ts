@@ -2,18 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-
-// Import dynamique de Prisma pour éviter les problèmes de compilation
-async function getPrismaClient() {
-  const { PrismaClient } = await import('@prisma/client')
-  const globalForPrisma = global as unknown as { prisma: PrismaClient }
-  
-  if (!globalForPrisma.prisma) {
-    globalForPrisma.prisma = new PrismaClient()
-  }
-  
-  return globalForPrisma.prisma
-}
+import { getPrisma } from '@/lib/get-prisma'
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,7 +11,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
 
-    const prisma = await getPrismaClient()
+    const prisma = getPrisma()
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email }
@@ -36,7 +25,7 @@ export async function POST(request: NextRequest) {
     
     const validEmails = body.clientEmails?.filter((email: string) => email?.trim()) || []
 
-    const project = await prisma.projects.create({
+    const project = await prisma.project.create({
       data: {
         name: body.name,
         client_name: body.clientName,
@@ -83,9 +72,9 @@ export async function GET() {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
 
-    const prisma = await getPrismaClient()
+    const prisma = getPrisma()
 
-    const projects = await prisma.projects.findMany({
+    const projects = await prisma.project.findMany({
       orderBy: { created_at: 'desc' },
       include: {
         _count: {
