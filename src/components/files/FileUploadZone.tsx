@@ -43,7 +43,8 @@ export default function FileUploadZone({
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const getFileIcon = (fileType: string) => {
+  const getFileIcon = (fileType?: string) => {
+    if (!fileType) return <File className="w-5 h-5" />
     if (fileType.startsWith('image/')) return <Image className="w-5 h-5" />
     if (fileType === 'application/pdf') return <FileText className="w-5 h-5" />
     return <File className="w-5 h-5" />
