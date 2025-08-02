@@ -20,7 +20,7 @@ export async function GET(
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
 
-    const prescriptions = await prisma.prescriptions.findMany({
+    const prescriptions = await prisma.prescription.findMany({
       where: { 
         projectId: params.id 
       },

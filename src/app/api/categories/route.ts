@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
     }
 
-    const categories = await prisma.prescription_categories.findMany({
+    const categories = await prisma.prescriptionCategory.findMany({
       orderBy: {
         name: 'asc'
       }
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const category = await prisma.prescription_categories.create({
+    const category = await prisma.prescriptionCategory.create({
       data: {
         name,
         description: description || null,

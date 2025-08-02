@@ -1,8 +1,13 @@
 // src/app/api/projects/[id]/spaces/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import prisma from '@/lib/prisma'
+import { PrismaClient } from '@prisma/client'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+
+// Créer une instance globale pour éviter trop de connexions
+const globalForPrisma = global as unknown as { prisma: PrismaClient }
+const prisma = globalForPrisma.prisma || new PrismaClient()
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
 // GET /api/projects/[id]/spaces - Récupérer tous les espaces d'un projet
 export async function GET(
@@ -26,7 +31,7 @@ export async function GET(
     const { id: projectId } = await params
 
     // Vérifier que l'utilisateur a accès au projet
-    const project = await prisma.projects.findFirst({
+    const project = await prisma.project.findFirst({
       where: {
         id: projectId,
         created_by: user.id
@@ -38,7 +43,7 @@ export async function GET(
     }
 
     // Récupérer les espaces avec le nombre de prescriptions
-    const spaces = await prisma.spaces.findMany({
+    const spaces = await prisma.space.findMany({
       where: { projectId },
       include: {
         _count: {
@@ -90,7 +95,7 @@ export async function POST(
     }
 
     // Vérifier que l'utilisateur a accès au projet
-    const project = await prisma.projects.findFirst({
+    const project = await prisma.project.findFirst({
       where: {
         id: projectId,
         created_by: user.id
@@ -102,15 +107,13 @@ export async function POST(
     }
 
     // Créer l'espace
-    const newSpace = await prisma.spaces.create({
+    const newSpace = await prisma.space.create({
       data: {
-        id: require('crypto').randomUUID(),
         name,
         type,
-        description,
+        description: description || null,
         surfaceM2: surfaceM2 ? parseFloat(surfaceM2) : null,
-        projectId,
-        updatedAt: new Date()
+        projectId
       },
       include: {
         _count: {

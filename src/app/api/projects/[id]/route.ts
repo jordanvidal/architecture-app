@@ -2,7 +2,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import prisma from '@/lib/prisma'
+import { PrismaClient } from '@prisma/client'
+
+// Créer une instance globale pour éviter trop de connexions
+const globalForPrisma = global as unknown as { prisma: PrismaClient }
+const prisma = globalForPrisma.prisma || new PrismaClient()
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
 export async function GET(
   request: NextRequest,
@@ -22,18 +27,18 @@ export async function GET(
       return NextResponse.json({ error: 'Utilisateur non trouvé' }, { status: 404 })
     }
 
-    const project = await prisma.projects.findFirst({
+    const project = await prisma.project.findFirst({
       where: { 
         id: params.id,
-        created_by: user.id // Vérifier que l'utilisateur est le créateur
+        created_by: user.id
       },
       include: {
         spaces: true,
         prescriptions: {
           include: {
-            prescription_categories: true,
-            spaces: true,
-            User: {
+            category: true,
+            space: true,
+            creator: {
               select: {
                 firstName: true,
                 lastName: true,
@@ -42,8 +47,8 @@ export async function GET(
             }
           }
         },
-        project_files: true,
-        User: {
+        files: true,
+        creator: {
           select: {
             firstName: true,
             lastName: true,
@@ -94,18 +99,13 @@ export async function GET(
       } : null,
       billingAddresses: project.billing_addresses,
       spaces: project.spaces,
-      prescriptions: project.prescriptions.map(p => ({
-        ...p,
-        category: p.prescription_categories,
-        space: p.spaces,
-        creator: p.User
-      })),
-      files: project.project_files,
-      creator: project.User,
+      prescriptions: project.prescriptions,
+      files: project.files,
+      creator: project.creator,
       _count: {
         prescriptions: project.prescriptions.length,
         spaces: project.spaces.length,
-        files: project.project_files.length
+        files: project.files.length
       }
     }
 
@@ -138,7 +138,7 @@ export async function PUT(
     }
 
     // Vérifier que l'utilisateur est le créateur du projet
-    const existingProject = await prisma.projects.findFirst({
+    const existingProject = await prisma.project.findFirst({
       where: {
         id: params.id,
         created_by: user.id
@@ -153,7 +153,7 @@ export async function PUT(
     
     const validEmails = body.clientEmails?.filter((email: string) => email?.trim()) || []
 
-    const project = await prisma.projects.update({
+    const project = await prisma.project.update({
       where: { id: params.id },
       data: {
         name: body.name,
@@ -164,17 +164,17 @@ export async function PUT(
         hasExterior: body.hasExterior || false,
         exteriorType: body.exteriorType || null,
         exteriorSurfaceM2: body.exteriorSurfaceM2 ? parseFloat(body.exteriorSurfaceM2) : null,
-        address: body.address,
-        delivery_contact_name: body.clientName,
-        delivery_address: body.address,
-        delivery_city: body.city,
-        delivery_zip_code: body.zipCode,
+        address: body.address || null,
+        delivery_contact_name: body.clientName || null,
+        delivery_address: body.address || null,
+        delivery_city: body.city || null,
+        delivery_zip_code: body.zipCode || null,
         delivery_country: body.country || 'France',
-        delivery_access_code: body.accessCode,
-        delivery_floor: body.floor,
-        delivery_door_code: body.doorCode,
-        delivery_instructions: body.deliveryInstructions,
-        deliveryFloorInfo: body.floor,
+        delivery_access_code: body.accessCode || null,
+        delivery_floor: body.floor || null,
+        delivery_door_code: body.doorCode || null,
+        delivery_instructions: body.deliveryInstructions || null,
+        deliveryFloorInfo: body.floor || null,
         budget_total: body.budgetTotal ? parseFloat(body.budgetTotal) : null,
         start_date: body.startDate ? new Date(body.startDate) : new Date(),
         end_date: body.endDate ? new Date(body.endDate) : null,
@@ -235,7 +235,7 @@ export async function DELETE(
     }
 
     // Vérifier que l'utilisateur est le créateur du projet
-    const existingProject = await prisma.projects.findFirst({
+    const existingProject = await prisma.project.findFirst({
       where: {
         id: params.id,
         created_by: user.id
@@ -246,7 +246,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Projet non trouvé ou accès refusé' }, { status: 404 })
     }
 
-    await prisma.projects.delete({
+    await prisma.project.delete({
       where: { id: params.id }
     })
 
