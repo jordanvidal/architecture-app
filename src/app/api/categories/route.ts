@@ -1,9 +1,13 @@
 // src/app/api/categories/route.ts
-
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import prisma from '@/lib/prisma'
+import { PrismaClient } from '@prisma/client'
+
+// Créer une instance globale pour éviter trop de connexions
+const globalForPrisma = global as unknown as { prisma: PrismaClient }
+const prisma = globalForPrisma.prisma || new PrismaClient()
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
 // GET - Récupérer toutes les catégories
 export async function GET(request: NextRequest) {
@@ -13,7 +17,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
     }
 
-    const categories = await prisma.prescription_categories.findMany({
+    const categories = await prisma.prescriptionCategory.findMany({
       orderBy: {
         name: 'asc'
       }
@@ -47,14 +51,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const category = await prisma.prescription_categories.create({
+    const category = await prisma.prescriptionCategory.create({
       data: {
-        id: require('crypto').randomUUID(),
         name,
         description,
         icon,
-        colorHex,
-        updated_at: new Date()
+        colorHex
       }
     })
 
