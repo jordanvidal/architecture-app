@@ -2,12 +2,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { PrismaClient } from '@prisma/client'
 
-// Créer une instance globale pour éviter trop de connexions
-const globalForPrisma = global as unknown as { prisma: PrismaClient }
-const prisma = globalForPrisma.prisma || new PrismaClient()
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+// Import dynamique de Prisma pour éviter les problèmes de compilation
+async function getPrismaClient() {
+  const { PrismaClient } = await import('@prisma/client')
+  const globalForPrisma = global as unknown as { prisma: PrismaClient }
+  
+  if (!globalForPrisma.prisma) {
+    globalForPrisma.prisma = new PrismaClient()
+  }
+  
+  return globalForPrisma.prisma
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,6 +21,8 @@ export async function POST(request: NextRequest) {
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
+
+    const prisma = await getPrismaClient()
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email }
@@ -74,6 +82,8 @@ export async function GET() {
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
+
+    const prisma = await getPrismaClient()
 
     const projects = await prisma.projects.findMany({
       orderBy: { created_at: 'desc' },
