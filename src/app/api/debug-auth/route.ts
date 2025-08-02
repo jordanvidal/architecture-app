@@ -6,7 +6,7 @@ import { authOptions } from '@/lib/auth'
 export async function GET() {
   const session = await getServerSession(authOptions)
   
-  const debug = {
+  const debug: any = {
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
     nextAuthUrl: process.env.NEXTAUTH_URL ? 'Définie' : 'NON DÉFINIE ❌',

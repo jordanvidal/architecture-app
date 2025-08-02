@@ -28,33 +28,33 @@ export async function POST(request: NextRequest) {
     
     const validEmails = body.clientEmails?.filter((email: string) => email?.trim()) || []
 
-    const project = await prisma.project.create({
+    const project = await prisma.projects.create({
       data: {
         name: body.name,
-        clientName: body.clientName,
+        client_name: body.clientName,
         clientEmails: validEmails,
         projectType: body.projectType || null,
         surfaceM2: body.surfaceM2 ? parseFloat(body.surfaceM2) : null,
         hasExterior: body.hasExterior || false,
         exteriorType: body.exteriorType || null,
         exteriorSurfaceM2: body.exteriorSurfaceM2 ? parseFloat(body.exteriorSurfaceM2) : null,
-        address: body.address,
-        deliveryContactName: body.clientName,
-        deliveryAddress: body.address,
-        deliveryCity: body.city,
-        deliveryZipCode: body.zipCode,
-        deliveryCountry: body.country || 'France',
-        deliveryAccessCode: body.accessCode,
-        deliveryFloor: body.floor,
-        deliveryDoorCode: body.doorCode,
-        deliveryInstructions: body.deliveryInstructions,
-        deliveryFloorInfo: body.floor,
-        budgetTotal: body.budgetTotal ? parseFloat(body.budgetTotal) : null,
-        startDate: body.startDate ? new Date(body.startDate) : new Date(),
-        endDate: body.endDate ? new Date(body.endDate) : null,
+        address: body.address || null,
+        delivery_contact_name: body.clientName || null,
+        delivery_address: body.address || null,
+        delivery_city: body.city || null,
+        delivery_zip_code: body.zipCode || null,
+        delivery_country: body.country || 'France',
+        delivery_access_code: body.accessCode || null,
+        delivery_floor: body.floor || null,
+        delivery_door_code: body.doorCode || null,
+        delivery_instructions: body.deliveryInstructions || null,
+        deliveryFloorInfo: body.floor || null,
+        budget_total: body.budgetTotal ? parseFloat(body.budgetTotal) : null,
+        start_date: body.startDate ? new Date(body.startDate) : new Date(),
+        end_date: body.endDate ? new Date(body.endDate) : null,
         status: 'BROUILLON',
-        progressPercentage: 0,
-        createdBy: user.id
+        progress_percentage: 0,
+        created_by: user.id
       }
     })
 
@@ -75,14 +75,13 @@ export async function GET() {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
 
-    const projects = await prisma.project.findMany({
-      orderBy: { createdAt: 'desc' },
+    const projects = await prisma.projects.findMany({
+      orderBy: { created_at: 'desc' },
       include: {
         _count: {
           select: {
             prescriptions: true,
-            spaces: true,
-            files: true
+            spaces: true
           }
         }
       }
