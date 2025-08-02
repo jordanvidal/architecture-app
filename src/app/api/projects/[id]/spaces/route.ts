@@ -7,21 +7,29 @@ import { authOptions } from '@/lib/auth'
 // GET /api/projects/[id]/spaces - Récupérer tous les espaces d'un projet
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
 
-    const projectId = params.id
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: 'Utilisateur non trouvé' }, { status: 404 })
+    }
+
+    const { id: projectId } = await params
 
     // Vérifier que l'utilisateur a accès au projet
-    const project = await prisma.project.findFirst({
+    const project = await prisma.projects.findFirst({
       where: {
         id: projectId,
-        creator: { id: session.user.id }
+        created_by: user.id
       }
     })
 
@@ -37,7 +45,7 @@ export async function GET(
           select: { prescriptions: true }
         }
       },
-      orderBy: { created_at: 'asc' }
+      orderBy: { createdAt: 'asc' }
     })
 
     return NextResponse.json(spaces)
@@ -53,15 +61,23 @@ export async function GET(
 // POST /api/projects/[id]/spaces - Créer un nouvel espace
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
 
-    const projectId = params.id
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: 'Utilisateur non trouvé' }, { status: 404 })
+    }
+
+    const { id: projectId } = await params
     const body = await request.json()
     const { name, type, description, surfaceM2 } = body
 
@@ -74,10 +90,10 @@ export async function POST(
     }
 
     // Vérifier que l'utilisateur a accès au projet
-    const project = await prisma.project.findFirst({
+    const project = await prisma.projects.findFirst({
       where: {
         id: projectId,
-        creator: { id: session.user.id }
+        created_by: user.id
       }
     })
 
@@ -88,11 +104,13 @@ export async function POST(
     // Créer l'espace
     const newSpace = await prisma.spaces.create({
       data: {
+        id: require('crypto').randomUUID(),
         name,
         type,
         description,
         surfaceM2: surfaceM2 ? parseFloat(surfaceM2) : null,
-        projectId
+        projectId,
+        updatedAt: new Date()
       },
       include: {
         _count: {

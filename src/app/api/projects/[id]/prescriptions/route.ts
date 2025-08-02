@@ -6,7 +6,7 @@ import prisma from '../../../../../lib/prisma'
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -15,27 +15,38 @@ export async function GET(
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
 
+    const { id: projectId } = await params
+
     const prescriptions = await prisma.prescriptions.findMany({
       where: { 
-        projectId: params.id 
+        projectId
       },
       include: {
-        space: true,
-        category: true,
-        creator: {
+        spaces: true,
+        prescription_categories: true,
+        User: {
           select: {
             firstName: true,
             lastName: true,
             email: true
           }
-        }
+        },
+        documents: true
       },
       orderBy: [
-        { created_at: 'desc' }
+        { createdAt: 'desc' }
       ]
     })
 
-    return NextResponse.json(prescriptions)
+    // Formatter pour le frontend
+    const formattedPrescriptions = prescriptions.map(p => ({
+      ...p,
+      space: p.spaces,
+      category: p.prescription_categories,
+      creator: p.User
+    }))
+
+    return NextResponse.json(formattedPrescriptions)
   } catch (error) {
     console.error('Erreur API prescriptions:', error)
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })

@@ -25,7 +25,7 @@ export async function GET(request: Request) {
         }
       },
       orderBy: {
-        created_at: 'desc'
+        createdAt: 'desc'
       }
     })
 
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
 
-    const user = await prisma.User.findUnique({
+    const user = await prisma.user.findUnique({
       where: { email: session.user.email }
     })
 
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     const resource = await prisma.resource_library.create({
       data: {
         ...body,
-        created_by: user.id,
+        createdBy: user.id,
         categoryPath: body.categoryPath || [],
         images: body.images || [],
         tags: body.tags || []
