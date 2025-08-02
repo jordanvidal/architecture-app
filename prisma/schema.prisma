@@ -159,7 +159,7 @@ model PrescriptionDocument {
   prescriptionId String
   uploadedBy     String
   created_at      DateTime     @default(now())
-  updated_at      DateTime     @updated_at
+  updatedAt      DateTime      @updatedAt
   prescription   prescriptions @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
   uploader       User         @relation(fields: [uploadedBy], references: [id])
 
