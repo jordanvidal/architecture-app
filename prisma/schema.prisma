@@ -43,8 +43,8 @@ model User {
   password      String?
   lastLoginAt   DateTime?
   role          UserRole          @default(CLIENT)
-  createdAt     DateTime          @default(now()) @map("created_at")
-  updatedAt     DateTime          @updatedAt @map("updated_at")
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
   accounts      Account[]
   sessions      Session[]
   contacts      Contact[]
@@ -115,8 +115,8 @@ model Space {
   description        String?
   surfaceM2          Float?
   projectId          String
-  createdAt          DateTime            @default(now()) @map("created_at")
-  updatedAt          DateTime            @updatedAt @map("updated_at")
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
   prescriptionSpaces PrescriptionSpace[]
   prescriptions      Prescription[]
   projectFiles       ProjectFile[]
@@ -132,8 +132,8 @@ model PrescriptionCategory {
   description   String?
   icon          String?
   colorHex      String?
-  createdAt     DateTime          @default(now()) @map("created_at")
-  updatedAt     DateTime          @updatedAt @map("updated_at")
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
   prescriptions Prescription[]
   resources     ResourceLibrary[]
 
@@ -157,8 +157,8 @@ model Prescription {
   productUrl  String?
   notes       String?
   createdBy   String
-  createdAt   DateTime             @default(now()) @map("created_at")
-  updatedAt   DateTime             @updatedAt @map("updated_at")
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
   contactId   String?
   spaces      PrescriptionSpace[]
   category    PrescriptionCategory @relation(fields: [categoryId], references: [id])
@@ -186,8 +186,8 @@ model ResourceLibrary {
   tags           String[]
   isFavorite     Boolean              @default(false)
   createdBy      String
-  createdAt      DateTime             @default(now()) @map("created_at")
-  updatedAt      DateTime             @updatedAt @map("updated_at")
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
   categoryPath   String[]
   contactId      String?
   countryOrigin  String?
@@ -217,8 +217,8 @@ model ProjectFile {
   projectId    String
   spaceId      String?
   uploadedBy   String
-  createdAt    DateTime     @default(now()) @map("created_at")
-  updatedAt    DateTime     @updatedAt @map("updated_at")
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
   project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   space        Space?       @relation(fields: [spaceId], references: [id])
   uploader     User         @relation(fields: [uploadedBy], references: [id])
@@ -236,8 +236,8 @@ model SpaceFile {
   description String?
   spaceId     String
   uploadedBy  String
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   space       Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   uploader    User     @relation(fields: [uploadedBy], references: [id])
 
@@ -257,8 +257,8 @@ model Contact {
   isSupplier    Boolean           @default(false)
   isReseller    Boolean           @default(false)
   createdBy     String
-  createdAt     DateTime          @default(now()) @map("created_at")
-  updatedAt     DateTime          @updatedAt @map("updated_at")
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
   creator       User              @relation(fields: [createdBy], references: [id])
   prescriptions Prescription[]    @relation("ContactPrescriptions")
   resources     ResourceLibrary[] @relation("ContactResources")
@@ -272,8 +272,8 @@ model Brand {
   website   String?
   country   String?
   logo      String?
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("brands")
 }
