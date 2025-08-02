@@ -43,8 +43,8 @@ model User {
   password         String?
   lastLoginAt      DateTime?
   role             UserRole           @default(CLIENT)
-  created_at        DateTime           @default(now())
-  updated_at        DateTime
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
   Account          Account[]
   Session          Session[]
   contacts         contacts[]
@@ -70,8 +70,8 @@ model brands {
   website   String?
   country   String?
   logo      String?
-  created_at DateTime @default(now())
-  updated_at DateTime
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 }
 
 model contacts {
@@ -86,10 +86,10 @@ model contacts {
   contactType      ContactType
   isSupplier       Boolean            @default(false)
   isReseller       Boolean            @default(false)
-  created_by        String
-  created_at        DateTime           @default(now())
-  updated_at        DateTime
-  User             User               @relation(fields: [created_by], references: [id])
+  createdBy        String
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+  User             User               @relation(fields: [createdBy], references: [id])
   prescriptions    prescriptions[]
   resource_library resource_library[]
 }
@@ -100,12 +100,11 @@ model prescription_categories {
   description      String?
   icon             String?
   colorHex         String?
-  created_at        DateTime           @default(now())
-  updated_at        DateTime
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
   prescriptions    prescriptions[]
   resource_library resource_library[]
 }
-
 
 model prescription_spaces {
   id             String        @id
@@ -134,21 +133,21 @@ model prescriptions {
   supplier                String?
   productUrl              String?
   notes                   String?
-  created_by               String
-  created_at               DateTime                @default(now())
-  updated_at               DateTime
+  createdBy               String
+  createdAt               DateTime                @default(now()) @map("created_at")
+  updatedAt               DateTime                @updatedAt @map("updated_at")
   contactId               String?
   prescription_spaces     prescription_spaces[]
   prescription_categories prescription_categories @relation(fields: [categoryId], references: [id])
   contacts                contacts?               @relation(fields: [contactId], references: [id])
-  User                    User                    @relation(fields: [created_by], references: [id])
+  User                    User                    @relation(fields: [createdBy], references: [id])
   projects                projects                @relation(fields: [projectId], references: [id], onDelete: Cascade)
   spaces                  spaces?                 @relation(fields: [spaceId], references: [id])
   documents               PrescriptionDocument[]
 }
 
 model PrescriptionDocument {
-  id             String       @id @default(cuid())
+  id             String        @id @default(cuid())
   name           String
   originalName   String
   type           FileType
@@ -158,10 +157,10 @@ model PrescriptionDocument {
   description    String?
   prescriptionId String
   uploadedBy     String
-  created_at      DateTime     @default(now())
-  updatedAt      DateTime      @updatedAt
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
   prescription   prescriptions @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
-  uploader       User         @relation(fields: [uploadedBy], references: [id])
+  uploader       User          @relation(fields: [uploadedBy], references: [id])
 
   @@map("prescription_documents")
 }
@@ -179,8 +178,8 @@ model project_files {
   projectId    String
   spaceId      String?
   uploadedBy   String
-  created_at    DateTime     @default(now())
-  updated_at    DateTime
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
   projects     projects     @relation(fields: [projectId], references: [id], onDelete: Cascade)
   spaces       spaces?      @relation(fields: [spaceId], references: [id])
   User         User         @relation(fields: [uploadedBy], references: [id])
@@ -201,7 +200,7 @@ model projects {
   end_date              DateTime?
   created_by            String
   created_at            DateTime        @default(now())
-  updated_at            DateTime
+  updated_at            DateTime        @updatedAt
   image_url             String?
   delivery_contact_name String?
   delivery_company      String?
@@ -244,9 +243,9 @@ model resource_library {
   imageUrl                String?
   tags                    String[]
   isFavorite              Boolean                 @default(false)
-  created_by               String
-  created_at               DateTime                @default(now())
-  updated_at               DateTime
+  createdBy               String
+  createdAt               DateTime                @default(now()) @map("created_at")
+  updatedAt               DateTime                @updatedAt @map("updated_at")
   categoryPath            String[]
   contactId               String?
   countryOrigin           String?
@@ -258,7 +257,7 @@ model resource_library {
   price                   Float?
   prescription_categories prescription_categories @relation(fields: [categoryId], references: [id])
   contacts                contacts?               @relation(fields: [contactId], references: [id])
-  User                    User                    @relation(fields: [created_by], references: [id])
+  User                    User                    @relation(fields: [createdBy], references: [id])
 }
 
 model space_files {
@@ -271,8 +270,8 @@ model space_files {
   description String?
   spaceId     String
   uploadedBy  String
-  created_at   DateTime @default(now())
-  updated_at   DateTime
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
   spaces      spaces   @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   User        User     @relation(fields: [uploadedBy], references: [id])
 }
@@ -284,8 +283,8 @@ model spaces {
   description         String?
   surfaceM2           Float?
   projectId           String
-  created_at           DateTime              @default(now())
-  updated_at           DateTime
+  createdAt           DateTime              @default(now()) @map("created_at")
+  updatedAt           DateTime              @updatedAt @map("updated_at")
   prescription_spaces prescription_spaces[]
   prescriptions       prescriptions[]
   project_files       project_files[]
