@@ -78,6 +78,10 @@ export default function LibraryView({ projects }: LibraryViewProps) {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedCategory, setSelectedCategory] = useState<SelectedCategory | null>(null);
   
+  // État pour les catégories dépliées - Déplacé en dehors du composant Sidebar
+  const [expandedParent, setExpandedParent] = useState<string | null>(null);
+  const [expandedSub1, setExpandedSub1] = useState<string | null>(null);
+  
   // Modals
   const [showResourceModal, setShowResourceModal] = useState(false);
   const [showFavoritesModal, setShowFavoritesModal] = useState(false);
@@ -236,8 +240,36 @@ export default function LibraryView({ projects }: LibraryViewProps) {
 
   // Composant Sidebar
   const Sidebar = () => {
-    const [expandedParent, setExpandedParent] = useState<string | null>(null);
-    const [expandedSub1, setExpandedSub1] = useState<string | null>(null);
+    const handleParentClick = (parentId: string) => {
+      console.log('Parent click:', parentId);
+      console.log('Before toggle - expandedParent:', expandedParent);
+      
+      // Toujours sélectionner la catégorie
+      setSelectedCategory({ level: 'parent', parentId: parentId });
+      
+      // Toggle l'expansion
+      if (expandedParent === parentId) {
+        setExpandedParent(null);
+        setExpandedSub1(null); // Fermer aussi les sous-catégories
+      } else {
+        setExpandedParent(parentId);
+        setExpandedSub1(null); // Réinitialiser les sous-catégories ouvertes
+      }
+    };
+
+    const handleSub1Click = (parentId: string, sub1Id: string) => {
+      console.log('Sub1 click:', sub1Id);
+      
+      // Toujours sélectionner la catégorie
+      setSelectedCategory({ 
+        level: 'sub1', 
+        parentId: parentId, 
+        sub1Id: sub1Id 
+      });
+      
+      // Toggle l'expansion
+      setExpandedSub1(expandedSub1 === sub1Id ? null : sub1Id);
+    };
 
     return (
       <div className="w-80 bg-white border-r border-gray-200 h-full overflow-y-auto">
@@ -254,84 +286,84 @@ export default function LibraryView({ projects }: LibraryViewProps) {
           </button>
 
           <div className="space-y-1">
-            {categories.map(parent => (
-              <div key={parent.id}>
-                <button
-                  onClick={() => {
-                    console.log('Clicked on parent:', parent.name, parent.id);
-                    console.log('Current expanded:', expandedParent);
-                    setExpandedParent(expandedParent === parent.id ? null : parent.id);
-                    setSelectedCategory({ level: 'parent', parentId: parent.id });
-                  }}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors ${
-                    selectedCategory?.parentId === parent.id && selectedCategory.level === 'parent'
-                      ? 'bg-slate-100 text-slate-800'
-                      : 'hover:bg-gray-50'
-                  }`}
-                >
-                  <span className="font-medium">{parent.name}</span>
-                  <ChevronRight 
-                    className={`w-4 h-4 transition-transform ${
-                      expandedParent === parent.id ? 'rotate-90' : ''
+            {categories.map(parent => {
+              const isExpanded = expandedParent === parent.id;
+              
+              return (
+                <div key={parent.id}>
+                  <button
+                    onClick={() => handleParentClick(parent.id)}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors ${
+                      selectedCategory?.parentId === parent.id && selectedCategory.level === 'parent'
+                        ? 'bg-slate-100 text-slate-800'
+                        : 'hover:bg-gray-50'
                     }`}
-                  />
-                </button>
+                  >
+                    <span className="font-medium">{parent.name}</span>
+                    {parent.subCategories && parent.subCategories.length > 0 && (
+                      <ChevronRight 
+                        className={`w-4 h-4 transition-transform ${
+                          isExpanded ? 'rotate-90' : ''
+                        }`}
+                      />
+                    )}
+                  </button>
 
-                {expandedParent === parent.id && (
-                  <div className="ml-4 mt-1 space-y-1">
-                    {parent.subCategories.map(sub1 => (
-                      <div key={sub1.id}>
-                        <button
-                          onClick={() => {
-                            setExpandedSub1(expandedSub1 === sub1.id ? null : sub1.id);
-                            setSelectedCategory({ 
-                              level: 'sub1', 
-                              parentId: parent.id, 
-                              sub1Id: sub1.id 
-                            });
-                          }}
-                          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors ${
-                            selectedCategory?.sub1Id === sub1.id && selectedCategory.level === 'sub1'
-                              ? 'bg-slate-100 text-slate-800'
-                              : 'hover:bg-gray-50'
-                          }`}
-                        >
-                          <span className="text-sm">{sub1.name}</span>
-                          <ChevronRight 
-                            className={`w-3 h-3 transition-transform ${
-                              expandedSub1 === sub1.id ? 'rotate-90' : ''
-                            }`}
-                          />
-                        </button>
+                  {isExpanded && parent.subCategories && parent.subCategories.length > 0 && (
+                    <div className="ml-4 mt-1 space-y-1">
+                      {parent.subCategories.map(sub1 => {
+                        const isSub1Expanded = expandedSub1 === sub1.id;
+                        
+                        return (
+                          <div key={sub1.id}>
+                            <button
+                              onClick={() => handleSub1Click(parent.id, sub1.id)}
+                              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors ${
+                                selectedCategory?.sub1Id === sub1.id && selectedCategory.level === 'sub1'
+                                  ? 'bg-slate-100 text-slate-800'
+                                  : 'hover:bg-gray-50'
+                              }`}
+                            >
+                              <span className="text-sm">{sub1.name}</span>
+                              {sub1.subCategories && sub1.subCategories.length > 0 && (
+                                <ChevronRight 
+                                  className={`w-3 h-3 transition-transform ${
+                                    isSub1Expanded ? 'rotate-90' : ''
+                                  }`}
+                                />
+                              )}
+                            </button>
 
-                        {expandedSub1 === sub1.id && (
-                          <div className="ml-4 mt-1 space-y-1">
-                            {sub1.subCategories.map(sub2 => (
-                              <button
-                                key={sub2.id}
-                                onClick={() => setSelectedCategory({ 
-                                  level: 'sub2', 
-                                  parentId: parent.id, 
-                                  sub1Id: sub1.id,
-                                  sub2Id: sub2.id 
-                                })}
-                                className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm ${
-                                  selectedCategory?.sub2Id === sub2.id
-                                    ? 'bg-slate-800 text-white'
-                                    : 'hover:bg-gray-50'
-                                }`}
-                              >
-                                {sub2.name}
-                              </button>
-                            ))}
+                            {isSub1Expanded && sub1.subCategories && sub1.subCategories.length > 0 && (
+                              <div className="ml-4 mt-1 space-y-1">
+                                {sub1.subCategories.map(sub2 => (
+                                  <button
+                                    key={sub2.id}
+                                    onClick={() => setSelectedCategory({ 
+                                      level: 'sub2', 
+                                      parentId: parent.id, 
+                                      sub1Id: sub1.id,
+                                      sub2Id: sub2.id 
+                                    })}
+                                    className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm ${
+                                      selectedCategory?.sub2Id === sub2.id
+                                        ? 'bg-slate-800 text-white'
+                                        : 'hover:bg-gray-50'
+                                    }`}
+                                  >
+                                    {sub2.name}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
