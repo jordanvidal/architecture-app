@@ -34,25 +34,27 @@ model Session {
 }
 
 model User {
-  id            String            @id @default(cuid())
-  firstName     String?
-  lastName      String?
-  email         String            @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?
-  lastLoginAt   DateTime?
-  role          UserRole          @default(CLIENT)
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-  accounts      Account[]
-  sessions      Session[]
-  contacts      Contact[]
-  prescriptions Prescription[]
-  uploadedFiles ProjectFile[]
-  projects      Project[]
-  resources     ResourceLibrary[]
-  spaceFiles    SpaceFile[]
+  id                     String                 @id @default(cuid())
+  firstName              String?
+  lastName               String?
+  email                  String                 @unique
+  emailVerified          DateTime?
+  image                  String?
+  password               String?
+  lastLoginAt            DateTime?
+  role                   UserRole               @default(CLIENT)
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime
+  accounts               Account[]
+  sessions               Session[]
+  contacts               Contact[]
+  prescription_documents PrescriptionDocument[]
+  prescriptions          Prescription[]
+  uploadedFiles          ProjectFile[]
+  projects               Project[]
+  resource_library       ResourceLibrary[]
+  spaceFiles             SpaceFile[]
+  userFavorites          UserFavorite[]
 }
 
 model VerificationToken {
@@ -116,7 +118,7 @@ model Space {
   surfaceM2          Float?
   projectId          String
   createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  updatedAt          DateTime
   prescriptionSpaces PrescriptionSpace[]
   prescriptions      Prescription[]
   projectFiles       ProjectFile[]
@@ -133,7 +135,7 @@ model PrescriptionCategory {
   icon          String?
   colorHex      String?
   createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  updatedAt     DateTime
   prescriptions Prescription[]
   resources     ResourceLibrary[]
 
@@ -141,31 +143,32 @@ model PrescriptionCategory {
 }
 
 model Prescription {
-  id          String               @id @default(cuid())
-  name        String
-  description String?
-  quantity    Int                  @default(1)
-  unitPrice   Float?
-  totalPrice  Float?
-  status      PrescriptionStatus   @default(EN_COURS)
-  projectId   String
-  spaceId     String?
-  categoryId  String
-  brand       String?
-  reference   String?
-  supplier    String?
-  productUrl  String?
-  notes       String?
-  createdBy   String
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
-  contactId   String?
-  spaces      PrescriptionSpace[]
-  category    PrescriptionCategory @relation(fields: [categoryId], references: [id])
-  contact     Contact?             @relation("ContactPrescriptions", fields: [contactId], references: [id])
-  creator     User                 @relation(fields: [createdBy], references: [id])
-  project     Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  space       Space?               @relation(fields: [spaceId], references: [id])
+  id                     String                 @id @default(cuid())
+  name                   String
+  description            String?
+  quantity               Int                    @default(1)
+  unitPrice              Float?
+  totalPrice             Float?
+  status                 PrescriptionStatus     @default(EN_COURS)
+  projectId              String
+  spaceId                String?
+  categoryId             String
+  brand                  String?
+  reference              String?
+  supplier               String?
+  productUrl             String?
+  notes                  String?
+  createdBy              String
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime
+  contactId              String?
+  prescription_documents PrescriptionDocument[]
+  spaces                 PrescriptionSpace[]
+  category               PrescriptionCategory   @relation(fields: [categoryId], references: [id])
+  contact                Contact?               @relation("ContactPrescriptions", fields: [contactId], references: [id])
+  User                   User                   @relation(fields: [createdBy], references: [id])
+  project                Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  space                  Space?                 @relation(fields: [spaceId], references: [id])
 
   @@map("prescriptions")
 }
@@ -187,7 +190,7 @@ model ResourceLibrary {
   isFavorite     Boolean              @default(false)
   createdBy      String
   createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
+  updatedAt      DateTime
   categoryPath   String[]
   contactId      String?
   countryOrigin  String?
@@ -199,7 +202,11 @@ model ResourceLibrary {
   price          Float?
   category       PrescriptionCategory @relation(fields: [categoryId], references: [id])
   contact        Contact?             @relation("ContactResources", fields: [contactId], references: [id])
-  creator        User                 @relation(fields: [createdBy], references: [id])
+  User           User                 @relation(fields: [createdBy], references: [id])
+  type           ResourceType?        @default(INTERIEUR)
+  subCategory2Id String?              @map("sub_category_2_id")
+  subCategory2   SubCategory2?        @relation(fields: [subCategory2Id], references: [id])
+  userFavorites  UserFavorite[]
 
   @@map("resource_library")
 }
@@ -218,7 +225,7 @@ model ProjectFile {
   spaceId      String?
   uploadedBy   String
   createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  updatedAt    DateTime
   project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   space        Space?       @relation(fields: [spaceId], references: [id])
   uploader     User         @relation(fields: [uploadedBy], references: [id])
@@ -237,7 +244,7 @@ model SpaceFile {
   spaceId     String
   uploadedBy  String
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  updatedAt   DateTime
   space       Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   uploader    User     @relation(fields: [uploadedBy], references: [id])
 
@@ -258,8 +265,8 @@ model Contact {
   isReseller    Boolean           @default(false)
   createdBy     String
   createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-  creator       User              @relation(fields: [createdBy], references: [id])
+  updatedAt     DateTime
+  User          User              @relation(fields: [createdBy], references: [id])
   prescriptions Prescription[]    @relation("ContactPrescriptions")
   resources     ResourceLibrary[] @relation("ContactResources")
 
@@ -273,7 +280,7 @@ model Brand {
   country   String?
   logo      String?
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime
 
   @@map("brands")
 }
@@ -288,6 +295,84 @@ model PrescriptionSpace {
 
   @@unique([prescriptionId, spaceId])
   @@map("prescription_spaces")
+}
+
+model PrescriptionDocument {
+  id             String       @id @default(cuid())
+  name           String
+  originalName   String
+  type           FileType
+  mimeType       String
+  size           Int
+  url            String
+  description    String?
+  prescriptionId String
+  uploadedBy     String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime
+  prescriptions  Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  User           User         @relation(fields: [uploadedBy], references: [id])
+
+  @@map("prescription_documents")
+}
+
+model ParentCategory {
+  id            String        @id @default(cuid())
+  name          String        @unique
+  displayOrder  Int           @default(0)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  
+  subCategories SubCategory1[]
+  
+  @@map("parent_categories")
+}
+
+model SubCategory1 {
+  id              String          @id @default(cuid())
+  name            String
+  parentId        String          @map("parent_id")
+  parent          ParentCategory  @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  displayOrder    Int             @default(0) @map("display_order")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  
+  subCategories   SubCategory2[]
+  
+  @@unique([parentId, name])
+  @@map("sub_categories_1")
+}
+
+model SubCategory2 {
+  id              String            @id @default(cuid())
+  name            String
+  subCategory1Id  String            @map("sub_category_1_id")
+  subCategory1    SubCategory1      @relation(fields: [subCategory1Id], references: [id], onDelete: Cascade)
+  displayOrder    Int               @default(0) @map("display_order")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+  
+  resources       ResourceLibrary[]
+  
+  @@unique([subCategory1Id, name])
+  @@map("sub_categories_2")
+}
+
+model UserFavorite {
+  id          String              @id @default(cuid())
+  userId      String              @map("user_id")
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resourceId  String              @map("resource_id")
+  resource    ResourceLibrary     @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  status      FavoriteStatus      @default(OK)
+  notes       String?
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+  
+  @@unique([userId, resourceId])
+  @@index([userId])
+  @@index([resourceId])
+  @@map("user_favorites")
 }
 
 enum UserRole {
@@ -372,4 +457,15 @@ enum ExteriorType {
   JARDIN
   TERRASSE
   BALCON
+}
+
+enum ResourceType {
+  INTERIEUR
+  EXTERIEUR
+}
+
+enum FavoriteStatus {
+  PAS_OK
+  OK
+  J_ADORE
 }

@@ -1,254 +1,259 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react';
+import { X } from 'lucide-react';
+
+interface Project {
+  id: string;
+  name: string;
+  client_name: string;
+  spaces?: Array<{
+    id: string;
+    name: string;
+    type: string;
+  }>;
+}
+
+interface Resource {
+  id: string;
+  name: string;
+  brand?: string;
+  reference?: string;
+  price?: number;
+  imageUrl?: string;
+}
 
 interface AddToProjectModalProps {
-  isOpen: boolean
-  onClose: () => void
-  resource: any
-  projects: any[]
+  isOpen: boolean;
+  onClose: () => void;
+  resource: Resource;
+  projects: Project[];
+  onSuccess: () => void;
 }
 
 export default function AddToProjectModal({
   isOpen,
   onClose,
   resource,
-  projects
+  projects,
+  onSuccess
 }: AddToProjectModalProps) {
-  const [prescriptionData, setPrescriptionData] = useState({
-    projectId: '',
-    spaceId: '',
-    quantity: 1,
-    unitPrice: resource?.price || 0,
-    totalPrice: resource?.price || 0,
-    notes: ''
-  })
-  
-  const [spaces, setSpaces] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
+  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [selectedSpaceId, setSelectedSpaceId] = useState('');
+  const [quantity, setQuantity] = useState('1');
+  const [notes, setNotes] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [projectSpaces, setProjectSpaces] = useState<Array<{ id: string; name: string; type: string }>>([]);
 
+  // Charger les espaces quand un projet est sélectionné
   useEffect(() => {
-    if (prescriptionData.projectId) {
-      fetchSpaces(prescriptionData.projectId)
+    if (selectedProjectId) {
+      fetchProjectSpaces(selectedProjectId);
+    } else {
+      setProjectSpaces([]);
+      setSelectedSpaceId('');
     }
-  }, [prescriptionData.projectId])
+  }, [selectedProjectId]);
 
-  useEffect(() => {
-    if (resource) {
-      setPrescriptionData(prev => ({
-        ...prev,
-        unitPrice: resource.price || 0,
-        totalPrice: (resource.price || 0) * prev.quantity
-      }))
-    }
-  }, [resource])
-
-  const fetchSpaces = async (projectId: string) => {
+  const fetchProjectSpaces = async (projectId: string) => {
     try {
-      const response = await fetch(`/api/projects/${projectId}/spaces`)
+      const response = await fetch(`/api/projects/${projectId}/spaces`);
       if (response.ok) {
-        const data = await response.json()
-        setSpaces(data)
+        const spaces = await response.json();
+        setProjectSpaces(spaces);
       }
     } catch (error) {
-      console.error('Erreur chargement espaces:', error)
+      console.error('Erreur lors du chargement des espaces:', error);
     }
-  }
+  };
 
-  const handleQuantityChange = (value: number) => {
-    setPrescriptionData(prev => ({
-      ...prev,
-      quantity: value,
-      totalPrice: (resource.price || 0) * value
-    }))
-  }
+  const handleSubmit = async () => {
+    if (!selectedProjectId) {
+      alert('Veuillez sélectionner un projet');
+      return;
+    }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
+    setLoading(true);
 
     try {
-      const prescription = {
+      // Créer une prescription basée sur la ressource
+      const prescriptionData = {
         name: resource.name,
-        description: resource.description,
         brand: resource.brand,
         reference: resource.reference,
-        productUrl: resource.productUrl,
-        quantity: prescriptionData.quantity,
-        unitPrice: resource.price || 0,
-        totalPrice: (resource.price || 0) * prescriptionData.quantity,
-        supplier: resource.supplier,
+        quantity: parseInt(quantity),
+        unitPrice: resource.price,
+        totalPrice: resource.price ? resource.price * parseInt(quantity) : null,
         status: 'EN_COURS',
-        projectId: prescriptionData.projectId,
-        spaceId: prescriptionData.spaceId || null,
-        categoryId: resource.categoryId,
-        notes: prescriptionData.notes
-      }
+        spaceId: selectedSpaceId || null,
+        notes: notes || null,
+        resourceId: resource.id
+      };
 
-      const response = await fetch(`/api/projects/${prescriptionData.projectId}/prescriptions`, {
+      const response = await fetch(`/api/projects/${selectedProjectId}/prescriptions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(prescription)
-      })
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(prescriptionData)
+      });
 
       if (response.ok) {
-        onClose()
+        onSuccess();
+      } else {
+        const error = await response.json();
+        alert(error.message || 'Erreur lors de l\'ajout au projet');
       }
     } catch (error) {
-      console.error('Erreur:', error)
+      console.error('Erreur:', error);
+      alert('Erreur lors de l\'ajout au projet');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  if (!isOpen || !resource) return null
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
-          <h2 className="text-xl font-semibold text-slate-900">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+        <div className="flex items-center justify-between p-6 border-b">
+          <h2 className="text-xl font-semibold text-gray-900">
             Ajouter au projet
           </h2>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 transition-colors"
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X className="w-5 h-5 text-gray-500" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-          {/* Info ressource */}
-          <div className="bg-slate-50 rounded-lg p-4 mb-6">
-            <h3 className="font-medium text-slate-900 mb-2">{resource.name}</h3>
-            {resource.brand && (
-              <p className="text-sm text-slate-600 mb-1">{resource.brand}</p>
-            )}
-            {resource.reference && (
-              <p className="text-sm text-slate-500">Réf: {resource.reference}</p>
-            )}
-            {resource.price && (
-              <p className="text-sm font-medium text-slate-900 mt-2">
-                {resource.price.toFixed(2)}€ TTC
-              </p>
-            )}
+        <div className="p-6 space-y-4">
+          {/* Aperçu de la ressource */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="flex items-start space-x-3">
+              {resource.imageUrl && (
+                <img 
+                  src={resource.imageUrl} 
+                  alt={resource.name}
+                  className="w-16 h-16 object-cover rounded"
+                />
+              )}
+              <div className="flex-1">
+                <h3 className="font-semibold text-gray-900">{resource.name}</h3>
+                {resource.brand && (
+                  <p className="text-sm text-gray-600">{resource.brand}</p>
+                )}
+                {resource.reference && (
+                  <p className="text-xs text-gray-500 font-mono">{resource.reference}</p>
+                )}
+              </div>
+            </div>
           </div>
 
-          <div className="space-y-4">
+          {/* Sélection du projet */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Projet *
+            </label>
+            <select
+              value={selectedProjectId}
+              onChange={(e) => setSelectedProjectId(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent"
+            >
+              <option value="">Sélectionner un projet...</option>
+              {projects.map(project => (
+                <option key={project.id} value={project.id}>
+                  {project.name} - {project.client_name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Sélection de l'espace (optionnel) */}
+          {projectSpaces.length > 0 && (
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Projet *
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Espace (optionnel)
               </label>
               <select
-                required
-                value={prescriptionData.projectId}
-                onChange={(e) => setPrescriptionData({ 
-                  ...prescriptionData, 
-                  projectId: e.target.value,
-                  spaceId: '' 
-                })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent"
+                value={selectedSpaceId}
+                onChange={(e) => setSelectedSpaceId(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent"
               >
-                <option value="">Sélectionner un projet</option>
-                {projects.map((project) => (
-                  <option key={project.id} value={project.id}>
-                    {project.name} - {project.clientName}
+                <option value="">Aucun espace spécifique</option>
+                {projectSpaces.map(space => (
+                  <option key={space.id} value={space.id}>
+                    {space.name}
                   </option>
                 ))}
               </select>
             </div>
+          )}
 
-            {prescriptionData.projectId && spaces.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Espace
-                </label>
-                <select
-                  value={prescriptionData.spaceId}
-                  onChange={(e) => setPrescriptionData({ 
-                    ...prescriptionData, 
-                    spaceId: e.target.value 
-                  })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent"
-                >
-                  <option value="">Non assigné</option>
-                  {spaces.map((space) => (
-                    <option key={space.id} value={space.id}>
-                      {space.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Quantité *
-                </label>
-                <input
-                  type="number"
-                  required
-                  min="1"
-                  value={prescriptionData.quantity}
-                  onChange={(e) => handleQuantityChange(parseInt(e.target.value) || 1)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Prix total
-                </label>
-                <div className="px-3 py-2 bg-slate-100 rounded-lg text-slate-900 font-medium">
-                  {prescriptionData.totalPrice.toFixed(2)} €
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Notes
-              </label>
-              <textarea
-                value={prescriptionData.notes}
-                onChange={(e) => setPrescriptionData({ 
-                  ...prescriptionData, 
-                  notes: e.target.value 
-                })}
-                rows={3}
-                placeholder="Instructions spéciales, finitions, etc."
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent"
-              />
-            </div>
+          {/* Quantité */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Quantité
+            </label>
+            <input
+              type="number"
+              min="1"
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent"
+            />
           </div>
 
-          <div className="flex justify-end gap-2 mt-6 pt-6 border-t border-slate-200">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
-            >
-              Annuler
-            </button>
-            <button
-              type="submit"
-              disabled={loading || !prescriptionData.projectId}
-              className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50"
-            >
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Ajout...
+          {/* Prix total indicatif */}
+          {resource.price && (
+            <div className="bg-blue-50 rounded-lg p-3">
+              <p className="text-sm text-blue-900">
+                Prix total indicatif : <span className="font-semibold">
+                  {(resource.price * parseInt(quantity || '0')).toFixed(2)} € TTC
                 </span>
-              ) : (
-                'Ajouter au projet'
-              )}
-            </button>
+              </p>
+            </div>
+          )}
+
+          {/* Notes */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Notes (optionnel)
+            </label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent resize-none"
+              placeholder="Notes spécifiques pour ce projet..."
+            />
           </div>
-        </form>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center justify-end space-x-3 px-6 py-4 bg-gray-50 border-t">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors"
+          >
+            Annuler
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={loading || !selectedProjectId}
+            className="px-6 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? (
+              <span className="flex items-center space-x-2">
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <span>Ajout...</span>
+              </span>
+            ) : (
+              'Ajouter au projet'
+            )}
+          </button>
+        </div>
       </div>
     </div>
-  )
+  );
 }
