@@ -14,7 +14,11 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    console.log('GET /api/projects/[id] - ID reçu:', params.id)
+    
     const session = await getServerSession(authOptions)
+    console.log('Session:', session?.user?.email)
+    
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
@@ -22,11 +26,13 @@ export async function GET(
     const user = await prisma.user.findUnique({
       where: { email: session.user.email }
     })
+    console.log('User trouvé:', user?.id)
 
     if (!user) {
       return NextResponse.json({ error: 'Utilisateur non trouvé' }, { status: 404 })
     }
 
+    // Récupérer le projet complet avec les relations
     const project = await prisma.project.findFirst({
       where: { 
         id: params.id,
@@ -37,14 +43,8 @@ export async function GET(
         prescriptions: {
           include: {
             category: true,
-            space: true,
-            creator: {
-              select: {
-                firstName: true,
-                lastName: true,
-                email: true
-              }
-            }
+            space: true
+            // Retirer creator car ce champ n'existe pas sur Prescription
           }
         },
         files: true,
@@ -59,22 +59,48 @@ export async function GET(
     })
 
     if (!project) {
-      return NextResponse.json({ error: 'Projet non trouvé' }, { status: 404 })
+      // Essayons sans la condition created_by pour voir si le projet existe
+      const anyProject = await prisma.project.findUnique({
+        where: { id: params.id }
+      })
+      
+      if (anyProject) {
+        console.log('Projet existe mais appartient à:', anyProject.created_by, 'au lieu de:', user.id)
+        return NextResponse.json({ error: 'Accès non autorisé à ce projet' }, { status: 403 })
+      } else {
+        console.log('Projet introuvable avec ID:', params.id)
+        return NextResponse.json({ error: 'Projet non trouvé' }, { status: 404 })
+      }
     }
+
+    // Pour chaque prescription, ajouter les infos du créateur manuellement
+    const prescriptionsWithCreator = await Promise.all(
+      project.prescriptions.map(async (prescription) => {
+        const creator = await prisma.user.findUnique({
+          where: { id: prescription.createdBy },
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true
+          }
+        })
+        return { ...prescription, creator }
+      })
+    )
 
     // Transformer les données pour correspondre au format attendu par le frontend
     const formattedProject = {
       id: project.id,
       name: project.name,
-      description: project.description,
+      description: project.description || '',
       clientName: project.client_name,
-      clientEmail: project.clientEmails?.[0] || project.client_email,
-      clientEmails: project.clientEmails,
-      address: project.address,
+      clientEmail: project.clientEmails?.[0] || project.client_email || '',
+      clientEmails: project.clientEmails || [],
+      address: project.address || '',
       status: project.status,
-      budgetTotal: project.budget_total,
-      budgetSpent: project.budget_spent,
-      progressPercentage: project.progress_percentage,
+      budgetTotal: project.budget_total || 0,
+      budgetSpent: project.budget_spent || 0,
+      progressPercentage: project.progress_percentage || 0,
       startDate: project.start_date,
       endDate: project.end_date,
       imageUrl: project.image_url,
@@ -86,32 +112,47 @@ export async function GET(
       exteriorType: project.exteriorType,
       exteriorSurfaceM2: project.exteriorSurfaceM2,
       deliveryAddress: project.delivery_address ? {
-        contactName: project.delivery_contact_name,
+        contactName: project.delivery_contact_name || project.client_name,
         company: project.delivery_company,
         address: project.delivery_address,
         city: project.delivery_city,
         zipCode: project.delivery_zip_code,
-        country: project.delivery_country,
+        country: project.delivery_country || 'France',
         accessCode: project.delivery_access_code,
         floor: project.delivery_floor,
         doorCode: project.delivery_door_code,
         instructions: project.delivery_instructions
       } : null,
-      billingAddresses: project.billing_addresses,
-      spaces: project.spaces,
-      prescriptions: project.prescriptions,
-      files: project.files,
+      billingAddresses: project.billing_addresses || [],
+      spaces: project.spaces || [],
+      prescriptions: prescriptionsWithCreator || [],
+      files: project.files || [],
       creator: project.creator,
       _count: {
-        prescriptions: project.prescriptions.length,
-        spaces: project.spaces.length,
-        files: project.files.length
+        prescriptions: prescriptionsWithCreator?.length || 0,
+        spaces: project.spaces?.length || 0,
+        files: project.files?.length || 0
       }
     }
 
+    console.log('Projet formatté envoyé:', formattedProject.id, formattedProject.name)
     return NextResponse.json(formattedProject)
+    
   } catch (error) {
-    console.error('Erreur récupération projet:', error)
+    console.error('Erreur détaillée récupération projet:', error)
+    
+    // Retourner plus de détails sur l'erreur en développement
+    if (process.env.NODE_ENV === 'development') {
+      return NextResponse.json(
+        { 
+          error: 'Erreur lors de la récupération du projet',
+          details: error instanceof Error ? error.message : 'Erreur inconnue',
+          stack: error instanceof Error ? error.stack : undefined
+        },
+        { status: 500 }
+      )
+    }
+    
     return NextResponse.json(
       { error: 'Erreur lors de la récupération du projet' },
       { status: 500 }
@@ -185,15 +226,15 @@ export async function PUT(
     const formattedProject = {
       id: project.id,
       name: project.name,
-      description: project.description,
+      description: project.description || '',
       clientName: project.client_name,
-      clientEmail: project.clientEmails?.[0] || project.client_email,
-      clientEmails: project.clientEmails,
-      address: project.address,
+      clientEmail: project.clientEmails?.[0] || project.client_email || '',
+      clientEmails: project.clientEmails || [],
+      address: project.address || '',
       status: project.status,
-      budgetTotal: project.budget_total,
-      budgetSpent: project.budget_spent,
-      progressPercentage: project.progress_percentage,
+      budgetTotal: project.budget_total || 0,
+      budgetSpent: project.budget_spent || 0,
+      progressPercentage: project.progress_percentage || 0,
       startDate: project.start_date,
       endDate: project.end_date,
       imageUrl: project.image_url,

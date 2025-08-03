@@ -8,8 +8,6 @@ import FilesPlansModule from '@/components/files/FilesPlansModule'
 import PrescriptionFormModal from '@/components/prescriptions/PrescriptionFormModal'
 import SpaceManagerModal from '@/components/spaces/SpaceManagerModal'
 
-
-
 interface Project {
   id: string
   name: string
@@ -89,6 +87,7 @@ export default function ProjectDetailPage() {
   const { data: session } = useSession()
   const router = useRouter()
   const params = useParams()
+  const projectId = params.id as string
   const [project, setProject] = useState<Project | null>(null)
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([])
   const [loading, setLoading] = useState(true)
@@ -105,15 +104,15 @@ export default function ProjectDetailPage() {
   const [categories, setCategories] = useState<any[]>([])
   const [showSpaceManager, setShowSpaceManager] = useState(false)
 
-
   useEffect(() => {
-    if (params.id) {
-      fetchProject(params.id as string)
-      fetchPrescriptions(params.id as string)
-      fetchSpaces(params.id as string)
+    if (projectId) {
+      console.log('Loading project with ID:', projectId)
+      fetchProject(projectId)
+      fetchPrescriptions(projectId)
+      fetchSpaces(projectId)
       fetchCategories()
     }
-  }, [params.id])
+  }, [projectId])
 
   const fetchSpaces = async (projectId: string) => {
     try {
@@ -129,15 +128,21 @@ export default function ProjectDetailPage() {
 
   const fetchProject = async (projectId: string) => {
     try {
+      console.log('Fetching project:', projectId)
       const response = await fetch(`/api/projects/${projectId}`)
+      console.log('Response status:', response.status)
+      
       if (response.ok) {
         const data = await response.json()
+        console.log('Project data:', data)
         setProject(data)
       } else {
+        const errorText = await response.text()
+        console.error('Error response:', errorText)
         router.push('/projects')
       }
     } catch (error) {
-      console.error('Erreur:', error)
+      console.error('Erreur fetch project:', error)
       router.push('/projects')
     } finally {
       setLoading(false)
@@ -145,16 +150,16 @@ export default function ProjectDetailPage() {
   }
 
   const fetchCategories = async () => {
-  try {
-    const response = await fetch('/api/categories')
-    if (response.ok) {
-      const data = await response.json()
-      setCategories(data)
+    try {
+      const response = await fetch('/api/categories')
+      if (response.ok) {
+        const data = await response.json()
+        setCategories(data)
+      }
+    } catch (error) {
+      console.error('Erreur chargement catégories:', error)
     }
-  } catch (error) {
-    console.error('Erreur chargement catégories:', error)
   }
-}
 
   const fetchPrescriptions = async (projectId: string) => {
     try {
@@ -207,25 +212,11 @@ export default function ProjectDetailPage() {
     }
   }
 
-    const openModal = (prescription: Prescription) => {
-      setSelectedPrescription(prescription)
-      setModalOpen(true)
-      setComments([])
-      fetchComments(prescription.id)
-    }
-  // Helper functions
-  const getSpaceIcon = (type: string) => {
-    const icons: { [key: string]: string } = {
-      'SALON': '🛋️',
-      'CUISINE': '🍳',
-      'CHAMBRE': '🛏️',
-      'SALLE_DE_BAIN': '🚿',
-      'BUREAU': '💻',
-      'ENTREE': '🚪',
-      'COULOIR': '🏃',
-      'AUTRE': '📦'
-    }
-    return icons[type] || '📦'
+  const openModal = (prescription: Prescription) => {
+    setSelectedPrescription(prescription)
+    setModalOpen(true)
+    setComments([])
+    fetchComments(prescription.id)
   }
 
   if (loading) {
@@ -378,7 +369,7 @@ export default function ProjectDetailPage() {
             {/* Adresse de livraison - Responsive */}
             {project.deliveryAddress && (
               <div className="bg-white rounded-lg border border-slate-200 p-4 sm:p-6">
-                <h3 className="text-base sm:text-lg font-semibold text-slate-900 mb-4">📦 Adresse de livraison</h3>
+                <h3 className="text-base sm:text-lg font-semibold text-slate-900 mb-4">Adresse de livraison</h3>
                 <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
                   <div className="space-y-2">
                     <div className="font-medium text-sm sm:text-base text-slate-900">
@@ -436,7 +427,7 @@ export default function ProjectDetailPage() {
             {project.billingAddresses && project.billingAddresses.length > 0 && (
               <div className="bg-white rounded-lg border border-slate-200 p-4 sm:p-6">
                 <h3 className="text-base sm:text-lg font-semibold text-slate-900 mb-4">
-                  🧾 Adresse{project.billingAddresses.length > 1 ? 's' : ''} de facturation
+                  Adresse{project.billingAddresses.length > 1 ? 's' : ''} de facturation
                 </h3>
                 <div className="space-y-4">
                   {project.billingAddresses.map((billing, index) => (
@@ -499,7 +490,7 @@ export default function ProjectDetailPage() {
             onPrescriptionClick={openModal}
             onPrescriptionsUpdated={() => fetchPrescriptions(project.id)}
             onNavigateToLibrary={() => setShowPrescriptionModal(true)}
-            onManageSpaces={() => setShowSpaceManager(true)}  // Cette ligne
+            onManageSpaces={() => setShowSpaceManager(true)}
           />
         )}
 
@@ -544,7 +535,7 @@ export default function ProjectDetailPage() {
             projectId={project.id}
             onSpacesUpdated={() => {
               fetchSpaces(project.id)
-              fetchPrescriptions(project.id) // Pour rafraîchir les espaces dans les prescriptions
+              fetchPrescriptions(project.id)
             }}
           />
         )}
@@ -562,12 +553,10 @@ export default function ProjectDetailPage() {
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-600">
                   {selectedPrescription.space ? (
-                    <>
-                      {getSpaceIcon(selectedPrescription.space.type)} {selectedPrescription.space.name}
-                    </>
+                    <>{selectedPrescription.space.name}</>
                   ) : (
-                    '📦 Non assignée'
-                  )} • {selectedPrescription.category.name}
+                    'Non assignée'
+                  )} • {selectedPrescription.category?.name || 'Sans catégorie'}
                 </p>
               </div>
               <button
@@ -627,10 +616,10 @@ export default function ProjectDetailPage() {
                         selectedPrescription.status === 'EN_COURS' ? 'bg-amber-100 text-amber-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
-                        {selectedPrescription.status === 'LIVRE' ? '✅ Livré' :
-                         selectedPrescription.status === 'COMMANDE' ? '📦 Commandé' :
-                         selectedPrescription.status === 'VALIDE' ? '👍 Validé' :
-                         selectedPrescription.status === 'EN_COURS' ? '⏳ En cours' :
+                        {selectedPrescription.status === 'LIVRE' ? 'Livré' :
+                         selectedPrescription.status === 'COMMANDE' ? 'Commandé' :
+                         selectedPrescription.status === 'VALIDE' ? 'Validé' :
+                         selectedPrescription.status === 'EN_COURS' ? 'En cours' :
                          selectedPrescription.status}
                       </span>
                     </div>
@@ -718,7 +707,7 @@ export default function ProjectDetailPage() {
               {/* Section commentaires - Responsive */}
               <div className="border-t border-slate-200 pt-4 sm:pt-6">
                 <h3 className="text-base sm:text-lg font-semibold text-slate-900 mb-4">
-                  💬 Commentaires ({comments.length})
+                  Commentaires ({comments.length})
                 </h3>
                 
                 {/* Zone de nouveau commentaire */}
@@ -750,7 +739,6 @@ export default function ProjectDetailPage() {
                     </div>
                   ) : comments.length === 0 ? (
                     <div className="text-center py-6 sm:py-8 text-slate-500">
-                      <span className="text-3xl sm:text-4xl mb-2 block">💬</span>
                       <p className="text-sm">Aucun commentaire pour le moment.</p>
                       <p className="text-xs sm:text-sm">Soyez le premier à commenter cette prescription !</p>
                     </div>
@@ -806,7 +794,6 @@ export default function ProjectDetailPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg w-full max-w-md p-4 sm:p-6">
             <div className="text-center">
-              <div className="text-3xl sm:text-4xl mb-4">🛋️</div>
               <h3 className="text-lg sm:text-xl font-semibold text-slate-900 mb-2">
                 Ajouter une prescription
               </h3>
@@ -821,7 +808,7 @@ export default function ProjectDetailPage() {
                   }}
                   className="w-full px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors text-sm sm:text-base"
                 >
-                  📚 Accéder à la bibliothèque
+                  Accéder à la bibliothèque
                 </button>
                 <button 
                   onClick={() => setShowLibraryModal(false)}
