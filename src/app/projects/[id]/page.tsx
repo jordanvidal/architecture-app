@@ -265,7 +265,7 @@ export default function ProjectDetailPage() {
           </div>
 
           {/* Progress Bar */}
-          <div className="mt-4 sm:mt-6">
+          {/* <div className="mt-4 sm:mt-6">
             <div className="flex justify-between text-xs sm:text-sm text-slate-600 mb-2">
               <span>Avancement prescriptions</span>
               <span>{project.progressPercentage}%</span>
@@ -276,7 +276,7 @@ export default function ProjectDetailPage() {
                 style={{ width: `${project.progressPercentage}%` }}
               ></div>
             </div>
-          </div>
+          </div> */}
         </div>
       </header>
 
@@ -321,10 +321,10 @@ export default function ProjectDetailPage() {
               <h3 className="text-base sm:text-lg font-semibold text-slate-900 mb-4">Informations client</h3>
               <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
                 <div className="space-y-3">
-                  <div>
+                  {/* <div>
                     <span className="text-xs sm:text-sm text-slate-600">Description :</span>
                     <p className="text-sm sm:text-base text-slate-900">{project.description}</p>
-                  </div>
+                  </div> */}
                   <div>
                     <span className="text-xs sm:text-sm text-slate-600">Client :</span>
                     <p className="text-sm sm:text-base text-slate-900">{project.clientName}</p>
