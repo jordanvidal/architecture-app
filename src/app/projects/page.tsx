@@ -187,7 +187,7 @@ export default function ProjectsPage() {
         {/* Projects Grid */}
         {filteredProjects.length === 0 ? (
           <div className="text-center py-12">
-            <div className="text-5xl sm:text-6xl mb-4">📁</div>
+            <div className="text-5xl sm:text-6xl mb-4"></div>
             <h3 className="text-lg sm:text-xl font-semibold text-slate-900 mb-2">
               {searchQuery || filterStatus !== 'ALL' 
                 ? 'Aucun projet trouvé' 

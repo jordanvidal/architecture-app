@@ -6,7 +6,7 @@ interface Project {
   budgetTotal: number
   budgetSpent: number
   progressPercentage: number
-  created_at: string
+  createdAt: string
   imageUrl?: string
 }
 
@@ -43,7 +43,7 @@ export default function ProjectCard({ project, onImageUpload }: ProjectCardProps
             }}
             className="opacity-0 group-hover:opacity-100 bg-white text-slate-800 px-3 py-2 rounded-lg text-sm font-medium transition-opacity hover:bg-slate-50"
           >
-            {project.imageUrl ? '📷 Changer' : '📷 Ajouter'}
+            {project.imageUrl ? 'Changer' : 'Ajouter'}
           </button>
         </div>
       </div>
@@ -56,19 +56,6 @@ export default function ProjectCard({ project, onImageUpload }: ProjectCardProps
           <p className="text-slate-600 text-sm">{project.clientName}</p>
         </div>
 
-        <div className="mb-4">
-          <div className="flex justify-between text-sm text-slate-600 mb-1">
-            <span>Avancement</span>
-            <span>{project.progressPercentage || 0}%</span>
-          </div>
-          <div className="w-full bg-slate-200 rounded-full h-2">
-            <div
-              className="bg-slate-800 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${project.progressPercentage || 0}%` }}
-            ></div>
-          </div>
-        </div>
-
         <div className="flex justify-between items-center text-sm">
           <div>
             <span className="text-slate-600">Budget: </span>
@@ -77,7 +64,7 @@ export default function ProjectCard({ project, onImageUpload }: ProjectCardProps
             </span>
           </div>
           <div className="text-slate-500">
-            {new Date(project.created_at).toLocaleDateString('fr-FR')}
+            {new Date(project.createdAt).toLocaleDateString('fr-FR')}
           </div>
         </div>
       </a>

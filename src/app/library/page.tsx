@@ -59,7 +59,7 @@ export default function LibraryPage() {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-bold text-slate-900">
-                📚 Bibliothèque de ressources
+                Bibliothèque de ressources
               </h1>
               <p className="mt-1 text-slate-600">
                 Gérez votre catalogue de produits et inspirations
