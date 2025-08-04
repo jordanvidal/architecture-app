@@ -2,32 +2,42 @@
 import { NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
 
-const prisma = new PrismaClient()
-
 export async function GET() {
   try {
-    const userCount = await prisma.user.count()
+    const prisma = new PrismaClient()
+    
+    // Récupérer tous les utilisateurs (sans les mots de passe)
     const users = await prisma.user.findMany({
       select: {
         id: true,
         email: true,
+        firstName: true,
+        lastName: true,
         role: true,
+        password: true, // On vérifie juste si c'est null ou pas
         createdAt: true
-      },
-      take: 5
+      }
     })
     
+    // Transformer pour masquer les mots de passe
+    const usersInfo = users.map(user => ({
+      ...user,
+      hasPassword: !!user.password,
+      password: undefined // On enlève le mot de passe de la réponse
+    }))
+    
+    await prisma.$disconnect()
+    
     return NextResponse.json({
-      success: true,
-      userCount,
-      sampleUsers: users,
-      databaseConnected: true
+      count: users.length,
+      users: usersInfo
     })
+    
   } catch (error: any) {
-    return NextResponse.json({
-      success: false,
-      error: error.message,
-      databaseConnected: false
-    })
+    console.error('Erreur lors de la récupération des utilisateurs:', error)
+    return NextResponse.json(
+      { error: 'Erreur lors de la récupération des utilisateurs', details: error.message },
+      { status: 500 }
+    )
   }
 }

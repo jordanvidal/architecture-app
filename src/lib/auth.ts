@@ -1,9 +1,8 @@
 // src/lib/auth.ts
-
 import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { compare } from 'bcryptjs'
-import { getPrisma } from '@/lib/get-prisma'
+import prisma from '@/lib/prisma'
 
 export const authOptions: NextAuthOptions = {
   session: {
@@ -21,7 +20,7 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
-        const user = await prisma.User.findUnique({
+        const user = await prisma.user.findUnique({
           where: {
             email: credentials.email
           }
@@ -66,7 +65,7 @@ export const authOptions: NextAuthOptions = {
     }
   },
   pages: {
-    signIn: '/auth/signin',
-    error: '/auth/error'
+    signIn: '/login',  // ✅ Corrigé pour pointer vers ta page de login
+    error: '/login'    // ✅ Redirige les erreurs vers la page de login
   }
 }
