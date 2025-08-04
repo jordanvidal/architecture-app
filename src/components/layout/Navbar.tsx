@@ -29,7 +29,7 @@ export default function Navbar() {
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
                 <Link href="/" className="text-lg sm:text-xl font-bold text-slate-900">
-                  ArchiApp
+                  Speccio
                 </Link>
               </div>
               
