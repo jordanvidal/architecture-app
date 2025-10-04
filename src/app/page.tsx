@@ -1,17 +1,19 @@
-// src/app/page.tsx
-import { redirect } from 'next/navigation'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 
 export default async function HomePage() {
-  // Vérifier si l'utilisateur est connecté
-  const session = await getServerSession(authOptions)
-  
-  if (session) {
-    // Si connecté, rediriger vers les projets
-    redirect('/projects')
+  const session = await getServerSession(authOptions);
+
+  // Si pas connecté, rediriger vers login
+  if (!session) {
+    redirect('/login');
+  }
+
+  // Redirection selon le rôle
+  if (session.user.role === 'CLIENT') {
+    redirect('/client');
   } else {
-    // Si non connecté, rediriger vers la page de login
-    redirect('/login')
+    redirect('/projects');
   }
 }

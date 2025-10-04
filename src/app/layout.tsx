@@ -1,37 +1,27 @@
-// src/app/layout.tsx
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import './globals.css'
-import AuthProvider from '@/components/AuthProvider'
-import Navbar from '@/components/layout/Navbar'
-import { ToastProvider } from '@/contexts/ToastContext'
-import ToastContainer from '@/components/ui/ToastContainer'
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
+import { Providers } from '@/components/Providers';
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'ArchiApp - Architecture d\'Intérieur',
-  description: 'Gestion collaborative de projets d\'architecture d\'intérieur',
-}
+  title: 'Speccio - Gestion de Projets Architecture',
+  description: 'Application de gestion pour agences d\'architecture d\'intérieur',
+};
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <html lang="fr">
       <body className={inter.className}>
-        <AuthProvider>
-          <ToastProvider>
-            <div className="min-h-screen bg-slate-50">
-              <Navbar />
-              <main>{children}</main>
-              <ToastContainer />
-            </div>
-          </ToastProvider>
-        </AuthProvider>
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
-  )
+  );
 }

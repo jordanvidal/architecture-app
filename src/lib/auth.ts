@@ -1,5 +1,4 @@
 // src/lib/auth.ts
-
 import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { compare } from 'bcryptjs'
@@ -41,7 +40,7 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           email: user.email,
           name: user.firstName ? `${user.firstName} ${user.lastName}` : user.email,
-          role: user.role, // 👈 Ajout du rôle
+          role: user.role,
         }
       }
     })
@@ -52,7 +51,7 @@ export const authOptions: NextAuthOptions = {
         return {
           ...token,
           id: user.id,
-          role: user.role, // 👈 Ajouter le rôle au token JWT
+          role: user.role,
         }
       }
       return token
@@ -63,13 +62,25 @@ export const authOptions: NextAuthOptions = {
         user: {
           ...session.user,
           id: token.id as string,
-          role: token.role as string, // 👈 Ajouter le rôle à la session
+          role: token.role as string,
         }
       }
+    },
+    async redirect({ url, baseUrl }) {
+      // Si on vient de se connecter (pas d'URL spécifique)
+      if (url === baseUrl || url === `${baseUrl}/`) {
+        // On ne peut pas accéder directement au role ici
+        // On redirige vers la page d'accueil qui fera le tri
+        return baseUrl;
+      }
+      
+      // Pour les autres redirections
+      if (url.startsWith('/')) return `${baseUrl}${url}`;
+      if (url.startsWith(baseUrl)) return url;
+      return baseUrl;
     }
   },
   pages: {
-    signIn: '/auth/signin',
-    error: '/auth/error'
+    signIn: '/login',
   }
 }

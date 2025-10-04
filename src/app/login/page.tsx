@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { signIn, getSession } from 'next-auth/react'
+import { signIn, useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
@@ -27,8 +27,16 @@ export default function LoginPage() {
       if (result?.error) {
         setError('Email ou mot de passe incorrect')
       } else {
-        // Rediriger vers le dashboard
-        router.push('/projects')
+        // Récupérer la session pour obtenir le rôle
+        const response = await fetch('/api/auth/session')
+        const session = await response.json()
+        
+        // Rediriger selon le rôle
+        if (session?.user?.role === 'CLIENT') {
+          router.push('/client')
+        } else {
+          router.push('/projects')
+        }
       }
     } catch (error) {
       setError('Une erreur est survenue')
@@ -119,7 +127,7 @@ export default function LoginPage() {
 
         {/* Demo accounts */}
         <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <h3 className="text-sm font-medium text-blue-900 mb-3">🚀 Comptes de démonstration</h3>
+          <h3 className="text-sm font-medium text-blue-900 mb-3">Comptes de démonstration</h3>
           <div className="space-y-2 text-sm">
             <div 
               className="flex justify-between items-center cursor-pointer hover:bg-blue-100 p-2 rounded"
@@ -134,11 +142,11 @@ export default function LoginPage() {
             <div 
               className="flex justify-between items-center cursor-pointer hover:bg-blue-100 p-2 rounded"
               onClick={() => {
-                setEmail('jean.dupont@email.com')
+                setEmail('client@test.com')
                 setPassword('password123')
               }}
             >
-              <span className="text-blue-800">jean.dupont@email.com</span>
+              <span className="text-blue-800">client@test.com</span>
               <span className="text-blue-600">(Client)</span>
             </div>
           </div>
