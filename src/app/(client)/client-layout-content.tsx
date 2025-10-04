@@ -1,13 +1,12 @@
-// app/client/layout.tsx
+// src/app/(client)/client-layout-content.tsx
 'use client'
 
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Bell, LogOut, User } from 'lucide-react'
-import '../globals.css'
 
-export default function ClientLayout({
+export default function ClientLayoutContent({
   children,
 }: {
   children: React.ReactNode
