@@ -7,62 +7,35 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String?
-  access_token      String?
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String?
-  session_state     String?
-  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+model SubCategory2 {
+  id                String            @id @default(cuid())
+  name              String
+  sub_category_1_id String
+  display_order     Int               @default(0)
+  created_at        DateTime          @default(now())
+  updated_at        DateTime
+  resources         ResourceLibrary[]
+  sub_categories_1  sub_categories_1  @relation(fields: [sub_category_1_id], references: [id], onDelete: Cascade)
 
-  @@unique([provider, providerAccountId])
+  @@unique([sub_category_1_id, name])
+  @@map("sub_categories_2")
 }
 
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
+model UserFavorite {
+  id               String          @id @default(cuid())
+  user_id          String
+  resource_id      String
+  status           FavoriteStatus  @default(OK)
+  notes            String?
+  created_at       DateTime        @default(now())
+  updated_at       DateTime
+  resource_library ResourceLibrary @relation(fields: [resource_id], references: [id], onDelete: Cascade)
+  User             User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
-model User {
-  id                     String                 @id @default(cuid())
-  firstName              String?
-  lastName               String?
-  email                  String                 @unique
-  emailVerified          DateTime?
-  image                  String?
-  password               String?
-  lastLoginAt            DateTime?
-  role                   UserRole               @default(CLIENT)
-  createdAt              DateTime               @default(now())
-  updatedAt              DateTime
-  accounts               Account[]
-  sessions               Session[]
-  contacts               Contact[]
-  prescription_documents PrescriptionDocument[]
-  prescriptions          Prescription[]
-  uploadedFiles          ProjectFile[]
-  projects               Project[]
-  resource_library       ResourceLibrary[]
-  spaceFiles             SpaceFile[]
-  userFavorites          UserFavorite[]
-}
-
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
-
-  @@unique([identifier, token])
+  @@unique([user_id, resource_id])
+  @@index([resource_id])
+  @@index([user_id])
+  @@map("user_favorites")
 }
 
 model Project {
@@ -106,8 +79,22 @@ model Project {
   files                 ProjectFile[]
   creator               User           @relation(fields: [created_by], references: [id])
   spaces                Space[]
+  clientAccess          ProjectClient[]
 
   @@map("projects")
+}
+
+model ProjectClient {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([projectId, userId])
+  @@index([userId])
+  @@map("project_clients")
 }
 
 model Space {
@@ -118,7 +105,7 @@ model Space {
   surfaceM2          Float?
   projectId          String
   createdAt          DateTime            @default(now())
-  updatedAt          DateTime
+  updatedAt          DateTime            @updatedAt
   prescriptionSpaces PrescriptionSpace[]
   prescriptions      Prescription[]
   projectFiles       ProjectFile[]
@@ -135,7 +122,7 @@ model PrescriptionCategory {
   icon          String?
   colorHex      String?
   createdAt     DateTime          @default(now())
-  updatedAt     DateTime
+  updatedAt     DateTime          @updatedAt
   prescriptions Prescription[]
   resources     ResourceLibrary[]
 
@@ -143,146 +130,34 @@ model PrescriptionCategory {
 }
 
 model Prescription {
-  id                     String                 @id @default(cuid())
-  name                   String
-  description            String?
-  quantity               Int                    @default(1)
-  unitPrice              Float?
-  totalPrice             Float?
-  status                 PrescriptionStatus     @default(EN_COURS)
-  projectId              String
-  spaceId                String?
-  categoryId             String
-  brand                  String?
-  reference              String?
-  supplier               String?
-  productUrl             String?
-  notes                  String?
-  createdBy              String
-  createdAt              DateTime               @default(now())
-  updatedAt              DateTime
-  contactId              String?
-  prescription_documents PrescriptionDocument[]
-  spaces                 PrescriptionSpace[]
-  category               PrescriptionCategory   @relation(fields: [categoryId], references: [id])
-  contact                Contact?               @relation("ContactPrescriptions", fields: [contactId], references: [id])
-  User                   User                   @relation(fields: [createdBy], references: [id])
-  project                Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  space                  Space?                 @relation(fields: [spaceId], references: [id])
+  id                    String                 @id @default(cuid())
+  name                  String
+  description           String?
+  quantity              Int                    @default(1)
+  unitPrice             Float?
+  totalPrice            Float?
+  status                PrescriptionStatus     @default(EN_COURS)
+  projectId             String
+  spaceId               String?
+  categoryId            String
+  brand                 String?
+  reference             String?
+  supplier              String?
+  productUrl            String?
+  notes                 String?
+  createdBy             String
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  contactId             String?
+  prescriptionDocuments PrescriptionDocument[]
+  spaces                PrescriptionSpace[]
+  category              PrescriptionCategory   @relation(fields: [categoryId], references: [id])
+  contact               Contact?               @relation("ContactPrescriptions", fields: [contactId], references: [id])
+  creator               User                   @relation(fields: [createdBy], references: [id])
+  project               Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  space                 Space?                 @relation(fields: [spaceId], references: [id])
 
   @@map("prescriptions")
-}
-
-model ResourceLibrary {
-  id             String               @id @default(cuid())
-  name           String
-  description    String?
-  categoryId     String
-  brand          String?
-  reference      String?
-  productUrl     String?
-  priceMin       Float?
-  priceMax       Float?
-  supplier       String?
-  availability   String?
-  imageUrl       String?
-  tags           String[]
-  isFavorite     Boolean              @default(false)
-  createdBy      String
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime
-  categoryPath   String[]
-  contactId      String?
-  countryOrigin  String?
-  dimensions     Json?
-  images         String[]
-  mainImageUrl   String?
-  pricePro       Float?
-  technicalSheet String?
-  price          Float?
-  category       PrescriptionCategory @relation(fields: [categoryId], references: [id])
-  contact        Contact?             @relation("ContactResources", fields: [contactId], references: [id])
-  User           User                 @relation(fields: [createdBy], references: [id])
-  type           ResourceType?        @default(INTERIEUR)
-  subCategory2Id String?              @map("sub_category_2_id")
-  subCategory2   SubCategory2?        @relation(fields: [subCategory2Id], references: [id])
-  userFavorites  UserFavorite[]
-
-  @@map("resource_library")
-}
-
-model ProjectFile {
-  id           String       @id @default(cuid())
-  name         String
-  originalName String
-  type         FileType
-  category     FileCategory
-  mimeType     String
-  size         Int
-  url          String
-  description  String?
-  projectId    String
-  spaceId      String?
-  uploadedBy   String
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime
-  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  space        Space?       @relation(fields: [spaceId], references: [id])
-  uploader     User         @relation(fields: [uploadedBy], references: [id])
-
-  @@map("project_files")
-}
-
-model SpaceFile {
-  id          String   @id @default(cuid())
-  filename    String
-  url         String
-  fileType    FileType
-  size        Int?
-  mimeType    String?
-  description String?
-  spaceId     String
-  uploadedBy  String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime
-  space       Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  uploader    User     @relation(fields: [uploadedBy], references: [id])
-
-  @@map("space_files")
-}
-
-model Contact {
-  id            String            @id @default(cuid())
-  name          String
-  company       String?
-  email         String?
-  phone         String?
-  website       String?
-  address       String?
-  notes         String?
-  contactType   ContactType
-  isSupplier    Boolean           @default(false)
-  isReseller    Boolean           @default(false)
-  createdBy     String
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime
-  User          User              @relation(fields: [createdBy], references: [id])
-  prescriptions Prescription[]    @relation("ContactPrescriptions")
-  resources     ResourceLibrary[] @relation("ContactResources")
-
-  @@map("contacts")
-}
-
-model Brand {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  website   String?
-  country   String?
-  logo      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime
-
-  @@map("brands")
 }
 
 model PrescriptionSpace {
@@ -309,70 +184,204 @@ model PrescriptionDocument {
   prescriptionId String
   uploadedBy     String
   createdAt      DateTime     @default(now())
-  updatedAt      DateTime
-  prescriptions  Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  updatedAt      DateTime     @updatedAt
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
   User           User         @relation(fields: [uploadedBy], references: [id])
 
   @@map("prescription_documents")
 }
 
-model ParentCategory {
-  id            String        @id @default(cuid())
-  name          String        @unique
-  displayOrder  Int           @default(0)
-  createdAt     DateTime      @default(now()) @map("created_at")
-  updatedAt     DateTime      @updatedAt @map("updated_at")
-  
-  subCategories SubCategory1[]
-  
-  @@map("parent_categories")
+model ProjectFile {
+  id           String       @id @default(cuid())
+  name         String
+  originalName String
+  type         FileType
+  category     FileCategory
+  mimeType     String
+  size         Int
+  url          String
+  description  String?
+  projectId    String
+  spaceId      String?
+  uploadedBy   String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  space        Space?       @relation(fields: [spaceId], references: [id])
+  uploader     User         @relation(fields: [uploadedBy], references: [id])
+
+  @@map("project_files")
 }
 
-model SubCategory1 {
-  id              String          @id @default(cuid())
-  name            String
-  parentId        String          @map("parent_id")
-  parent          ParentCategory  @relation(fields: [parentId], references: [id], onDelete: Cascade)
-  displayOrder    Int             @default(0) @map("display_order")
-  createdAt       DateTime        @default(now()) @map("created_at")
-  updatedAt       DateTime        @updatedAt @map("updated_at")
-  
-  subCategories   SubCategory2[]
-  
-  @@unique([parentId, name])
-  @@map("sub_categories_1")
+model SpaceFile {
+  id          String   @id @default(cuid())
+  filename    String
+  url         String
+  fileType    FileType
+  size        Int?
+  mimeType    String?
+  description String?
+  spaceId     String
+  uploadedBy  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  space       Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  uploader    User     @relation(fields: [uploadedBy], references: [id])
+
+  @@map("space_files")
 }
 
-model SubCategory2 {
-  id              String            @id @default(cuid())
-  name            String
-  subCategory1Id  String            @map("sub_category_1_id")
-  subCategory1    SubCategory1      @relation(fields: [subCategory1Id], references: [id], onDelete: Cascade)
-  displayOrder    Int               @default(0) @map("display_order")
-  createdAt       DateTime          @default(now()) @map("created_at")
-  updatedAt       DateTime          @updatedAt @map("updated_at")
-  
-  resources       ResourceLibrary[]
-  
-  @@unique([subCategory1Id, name])
-  @@map("sub_categories_2")
+model Contact {
+  id            String            @id @default(cuid())
+  name          String
+  company       String?
+  email         String?
+  phone         String?
+  website       String?
+  address       String?
+  notes         String?
+  contactType   ContactType
+  isSupplier    Boolean           @default(false)
+  isReseller    Boolean           @default(false)
+  createdBy     String
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  creator       User              @relation(fields: [createdBy], references: [id])
+  prescriptions Prescription[]    @relation("ContactPrescriptions")
+  resources     ResourceLibrary[] @relation("ContactResources")
+
+  @@map("contacts")
 }
 
-model UserFavorite {
-  id          String              @id @default(cuid())
-  userId      String              @map("user_id")
-  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  resourceId  String              @map("resource_id")
-  resource    ResourceLibrary     @relation(fields: [resourceId], references: [id], onDelete: Cascade)
-  status      FavoriteStatus      @default(OK)
-  notes       String?
-  createdAt   DateTime            @default(now()) @map("created_at")
-  updatedAt   DateTime            @updatedAt @map("updated_at")
-  
-  @@unique([userId, resourceId])
-  @@index([userId])
-  @@index([resourceId])
-  @@map("user_favorites")
+model Brand {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  website   String?
+  country   String?
+  logo      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("brands")
+}
+
+model ResourceLibrary {
+  id             String               @id @default(cuid())
+  name           String
+  description    String?
+  categoryId     String
+  brand          String?
+  reference      String?
+  productUrl     String?
+  priceMin       Float?
+  priceMax       Float?
+  supplier       String?
+  availability   String?
+  imageUrl       String?
+  tags           String[]
+  isFavorite     Boolean              @default(false)
+  createdBy      String
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  categoryPath   String[]
+  contactId      String?
+  countryOrigin  String?
+  dimensions     Json?
+  images         String[]
+  mainImageUrl   String?
+  pricePro       Float?
+  technicalSheet String?
+  price          Float?
+  subCategory2Id String?              @map("sub_category_2_id")
+  type           ResourceType?        @default(INTERIEUR)
+  category       PrescriptionCategory @relation(fields: [categoryId], references: [id])
+  contact        Contact?             @relation("ContactResources", fields: [contactId], references: [id])
+  creator        User                 @relation(fields: [createdBy], references: [id])
+  subCategory2   SubCategory2?        @relation(fields: [subCategory2Id], references: [id])
+  user_favorites UserFavorite[]
+
+  @@map("resource_library")
+}
+
+model Account {
+  id                String  @id
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  User              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  User         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id                     String                 @id @default(cuid())
+  firstName              String?
+  lastName               String?
+  email                  String                 @unique
+  emailVerified          DateTime?
+  image                  String?
+  password               String?
+  lastLoginAt            DateTime?
+  role                   UserRole               @default(CLIENT)
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+  Account                Account[]
+  Session                Session[]
+  contacts               Contact[]
+  prescription_documents PrescriptionDocument[]
+  prescriptions          Prescription[]
+  projectFiles           ProjectFile[]
+  projects               Project[]
+  resourceLibrary        ResourceLibrary[]
+  spaceFiles             SpaceFile[]
+  user_favorites         UserFavorite[]
+  clientProjects         ProjectClient[]
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model parent_categories {
+  id               String             @id
+  name             String             @unique
+  displayOrder     Int                @default(0)
+  created_at       DateTime           @default(now())
+  updated_at       DateTime
+  sub_categories_1 sub_categories_1[]
+}
+
+model sub_categories_1 {
+  id                String            @id
+  name              String
+  parent_id         String
+  display_order     Int               @default(0)
+  created_at        DateTime          @default(now())
+  updated_at        DateTime
+  parent_categories parent_categories @relation(fields: [parent_id], references: [id], onDelete: Cascade)
+  sub_categories_2  SubCategory2[]
+
+  @@unique([parent_id, name])
 }
 
 enum UserRole {
@@ -387,6 +396,24 @@ enum ProjectStatus {
   EN_ATTENTE
   TERMINE
   ANNULE
+}
+
+enum ProjectType {
+  HOTEL
+  RESIDENTIEL_APPARTEMENT
+  RESIDENTIEL_MAISON
+  RESIDENTIEL_IMMEUBLE
+  RESTAURANT
+  RETAIL
+  BUREAUX
+  SCENOGRAPHIE
+  AUTRE
+}
+
+enum ExteriorType {
+  JARDIN
+  TERRASSE
+  BALCON
 }
 
 enum SpaceType {
@@ -439,24 +466,6 @@ enum ContactType {
   MARQUE
   ARTISAN
   AUTRE
-}
-
-enum ProjectType {
-  HOTEL
-  RESIDENTIEL_APPARTEMENT
-  RESIDENTIEL_MAISON
-  RESIDENTIEL_IMMEUBLE
-  RESTAURANT
-  RETAIL
-  BUREAUX
-  SCENOGRAPHIE
-  AUTRE
-}
-
-enum ExteriorType {
-  JARDIN
-  TERRASSE
-  BALCON
 }
 
 enum ResourceType {

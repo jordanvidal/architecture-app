@@ -6,8 +6,8 @@ const prisma = new PrismaClient()
 async function main() {
   // Récupérer les données nécessaires
   const projects = await prisma.project.findMany()
-  const categories = await prisma.prescriptionsCategory.findMany()
-  const agenceUser = await prisma.User.findUnique({
+  const categories = await prisma.prescriptionCategory.findMany()
+  const agenceUser = await prisma.user.findUnique({
     where: { email: 'marie.dubois@agence.com' }
   })
 
@@ -23,70 +23,35 @@ async function main() {
   const villaModerne = projects.find(p => p.name === 'Villa Moderne')
   if (villaModerne) {
     // Créer quelques espaces pour ce projet
-    const salon = await prisma.spaces.upsert({
+    const existingSalon = await prisma.space.findFirst({
       where: { 
-        id: 'temp-salon-id' // On va utiliser findFirst puis create
-      },
-      update: {},
-      create: {
+        projectId: villaModerne.id,
+        name: 'Salon'
+      }
+    })
+    
+    const salon = existingSalon || await prisma.space.create({
+      data: {
         projectId: villaModerne.id,
         name: 'Salon',
         type: 'SALON',
         surfaceM2: 35.5
       }
-    }).catch(async () => {
-      // Si l'upsert échoue, on fait findFirst puis create
-      const existingSalon = await prisma.spaces.findFirst({
-        where: { 
-          projectId: villaModerne.id,
-          name: 'Salon'
-        }
-      })
-      
-      if (existingSalon) {
-        return existingSalon
-      } else {
-        return await prisma.spaces.create({
-          data: {
-            projectId: villaModerne.id,
-            name: 'Salon',
-            type: 'SALON',
-            surfaceM2: 35.5
-          }
-        })
-      }
     })
 
-    const cuisine = await prisma.spaces.upsert({
+    const existingCuisine = await prisma.space.findFirst({
       where: { 
-        id: 'temp-cuisine-id'
-      },
-      update: {},
-      create: {
+        projectId: villaModerne.id,
+        name: 'Cuisine'
+      }
+    })
+    
+    const cuisine = existingCuisine || await prisma.space.create({
+      data: {
         projectId: villaModerne.id,
         name: 'Cuisine',
         type: 'CUISINE',
         surfaceM2: 18.2
-      }
-    }).catch(async () => {
-      const existingCuisine = await prisma.spaces.findFirst({
-        where: { 
-          projectId: villaModerne.id,
-          name: 'Cuisine'
-        }
-      })
-      
-      if (existingCuisine) {
-        return existingCuisine
-      } else {
-        return await prisma.spaces.create({
-          data: {
-            projectId: villaModerne.id,
-            name: 'Cuisine',
-            type: 'CUISINE',
-            surfaceM2: 18.2
-          }
-        })
       }
     })
 
@@ -107,8 +72,7 @@ async function main() {
         totalPrice: 2450.00,
         supplier: 'BoConcept Lyon Part-Dieu',
         status: 'VALIDE',
-        notes: 'Livraison prévue fin mai. Couleur gris anthracite validée par les clients lors de la réunion du 15/03. Prévoir protection lors de la livraison (escalier étroit).',
-        validatedAt: new Date('2024-03-20')
+        notes: 'Livraison prévue fin mai. Couleur gris anthracite validée par les clients lors de la réunion du 15/03.'
       },
       {
         name: 'Table basse marbre Calacatta',
@@ -138,8 +102,7 @@ async function main() {
         totalPrice: 760.00,
         supplier: 'Luminaires Plus',
         status: 'COMMANDE',
-        notes: 'Commande passée le 25/03. Délai de livraison 4-6 semaines.',
-        orderedAt: new Date('2024-03-25')
+        notes: 'Commande passée le 25/03. Délai de livraison 4-6 semaines.'
       },
       {
         name: 'Tapis berbère 200x300',
@@ -153,9 +116,7 @@ async function main() {
         totalPrice: 650.00,
         supplier: 'Benuta France',
         status: 'LIVRE',
-        notes: 'Livré et posé. Client très satisfait de la qualité.',
-        orderedAt: new Date('2024-02-15'),
-        deliveredAt: new Date('2024-03-10')
+        notes: 'Livré et posé. Client très satisfait de la qualité.'
       },
       {
         name: 'Îlot central sur mesure',
@@ -183,19 +144,18 @@ async function main() {
         totalPrice: 360.00,
         supplier: 'Philips Pro',
         status: 'VALIDE',
-        notes: 'Compatible avec système Philips Hue existant.',
-        validatedAt: new Date('2024-03-18')
+        notes: 'Compatible avec système Philips Hue existant.'
       }
     ]
 
     // Créer les prescriptions
     for (const prescData of prescriptions) {
       if (prescData.categoryId) {
-        await prisma.prescriptions.create({
+        await prisma.prescription.create({
           data: {
             ...prescData,
             projectId: villaModerne.id,
-            created_by: agenceUser.id
+            createdBy: agenceUser.id
           }
         })
         console.log(`✅ Prescription créée: ${prescData.name}`)
@@ -206,12 +166,14 @@ async function main() {
   // Quelques prescriptions pour Appartement Parisien
   const appartParis = projects.find(p => p.name === 'Appartement Parisien')
   if (appartParis) {
-    const salon = await prisma.spaces.findFirst({
+    const existingSalon = await prisma.space.findFirst({
       where: { 
         projectId: appartParis.id,
         name: 'Salon'
       }
-    }) || await prisma.spaces.create({
+    })
+    
+    const salon = existingSalon || await prisma.space.create({
       data: {
         projectId: appartParis.id,
         name: 'Salon',
@@ -233,8 +195,7 @@ async function main() {
         totalPrice: 1200.00,
         supplier: 'Made.com',
         status: 'COMMANDE',
-        notes: 'Livraison prévue mi-avril. Vérifier l\'accès (3e étage sans ascenseur).',
-        orderedAt: new Date('2024-03-20')
+        notes: 'Livraison prévue mi-avril. Vérifier l\'accès (3e étage sans ascenseur).'
       },
       {
         name: 'Lustre cristal vintage',
@@ -254,11 +215,11 @@ async function main() {
 
     for (const prescData of prescriptions) {
       if (prescData.categoryId) {
-        await prisma.prescriptions.create({
+        await prisma.prescription.create({
           data: {
             ...prescData,
             projectId: appartParis.id,
-            created_by: agenceUser.id
+            createdBy: agenceUser.id
           }
         })
         console.log(`✅ Prescription créée: ${prescData.name}`)
@@ -269,7 +230,7 @@ async function main() {
   console.log('\n🎉 Prescriptions de test créées avec succès!')
   
   // Statistiques
-  const totalPrescriptions = await prisma.prescriptions.count()
+  const totalPrescriptions = await prisma.prescription.count()
   console.log(`📊 Total prescriptions en base: ${totalPrescriptions}`)
 }
 

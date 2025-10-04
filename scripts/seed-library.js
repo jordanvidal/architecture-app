@@ -7,7 +7,7 @@ async function main() {
   console.log('📚 Création de la bibliothèque de ressources...\n')
 
   // Récupérer l'utilisateur agence et les catégories
-  const agenceUser = await prisma.User.findUnique({
+  const agenceUser = await prisma.user.findUnique({
     where: { email: 'marie.dubois@agence.com' }
   })
 
@@ -16,7 +16,7 @@ async function main() {
     return
   }
 
-  const categories = await prisma.prescriptionsCategory.findMany()
+  const categories = await prisma.prescriptionCategory.findMany()
   console.log(`📋 ${categories.length} catégories trouvées`)
 
   // Produits de test par catégorie
@@ -165,7 +165,7 @@ async function main() {
       continue
     }
 
-    const resource = await prisma.resource_library.create({
+    const resource = await prisma.resourceLibrary.create({
       data: {
         name: productData.name,
         description: productData.description,
@@ -179,7 +179,7 @@ async function main() {
         availability: productData.availability,
         imageUrl: productData.imageUrl,
         tags: productData.tags,
-        created_by: agenceUser.id
+        createdBy: agenceUser.id
       }
     })
 
@@ -189,7 +189,7 @@ async function main() {
   console.log(`\n🎉 ${libraryProducts.length} produits ajoutés à la bibliothèque!`)
   console.log('📊 Répartition par catégorie:')
   
-  const stats = await prisma.prescriptionsCategory.findMany({
+  const stats = await prisma.prescriptionCategory.findMany({
     include: {
       _count: {
         select: { resources: true }

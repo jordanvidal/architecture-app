@@ -1,4 +1,5 @@
 // src/lib/auth.ts
+
 import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { compare } from 'bcryptjs'
@@ -40,6 +41,7 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           email: user.email,
           name: user.firstName ? `${user.firstName} ${user.lastName}` : user.email,
+          role: user.role, // 👈 Ajout du rôle
         }
       }
     })
@@ -50,6 +52,7 @@ export const authOptions: NextAuthOptions = {
         return {
           ...token,
           id: user.id,
+          role: user.role, // 👈 Ajouter le rôle au token JWT
         }
       }
       return token
@@ -60,12 +63,13 @@ export const authOptions: NextAuthOptions = {
         user: {
           ...session.user,
           id: token.id as string,
+          role: token.role as string, // 👈 Ajouter le rôle à la session
         }
       }
     }
   },
   pages: {
-    signIn: '/login',  // ✅ Corrigé pour pointer vers ta page de login
-    error: '/login'    // ✅ Redirige les erreurs vers la page de login
+    signIn: '/auth/signin',
+    error: '/auth/error'
   }
 }

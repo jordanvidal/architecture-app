@@ -46,7 +46,7 @@ async function main() {
   ]
 
   for (const categoryData of categories) {
-    const category = await prisma.prescriptionsCategory.upsert({
+    const category = await prisma.prescriptionCategory.upsert({
       where: { name: categoryData.name },
       update: categoryData,
       create: categoryData
@@ -66,3 +66,4 @@ main()
   .finally(async () => {
     await prisma.$disconnect()
   })
+  
