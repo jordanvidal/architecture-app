@@ -10,17 +10,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
-    // Récupérer toutes les catégories avec leur hiérarchie complète
-    const categories = await prisma.parentCategory.findMany({
-      include: {
-        subCategories: {
-          include: {
-            subCategories: true
-          },
-          orderBy: { displayOrder: 'asc' }
-        }
-      },
-      orderBy: { displayOrder: 'asc' }
+    const categories = await prisma.prescriptionCategory.findMany({
+      orderBy: { name: 'asc' }
     });
 
     return NextResponse.json(categories);

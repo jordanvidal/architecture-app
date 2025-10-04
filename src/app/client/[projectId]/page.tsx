@@ -3,7 +3,7 @@ import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import prisma from '@/lib/prisma';
 import Link from 'next/link';
-import PrescriptionCard from './components/PrescriptionCard';
+import PrescriptionsList from './components/PrescriptionsList';
 
 interface PageProps {
   params: {
@@ -72,7 +72,6 @@ export default async function ClientProjectDetailPage({ params }: PageProps) {
     redirect('/login');
   }
 
-  // Vérifier que le client a accès à ce projet
   const projectAccess = await prisma.projectClient.findUnique({
     where: {
       projectId_userId: {
@@ -92,15 +91,7 @@ export default async function ClientProjectDetailPage({ params }: PageProps) {
     redirect('/client');
   }
 
-  // Calculer la progression
   const allPrescriptions = project.spaces.flatMap((space) => space.prescriptions);
-  const completedPrescriptions = allPrescriptions.filter(
-    (p) => p.status === 'LIVRE' || p.status === 'COMMANDE'
-  );
-  const progress =
-    allPrescriptions.length > 0
-      ? Math.round((completedPrescriptions.length / allPrescriptions.length) * 100)
-      : 0;
 
   return (
     <div className="min-h-screen bg-[#fafaf9] text-stone-900">
@@ -140,11 +131,7 @@ export default async function ClientProjectDetailPage({ params }: PageProps) {
           )}
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-8 mt-12 pt-12 border-t border-stone-200">
-            <div>
-              <div className="text-5xl font-light mb-2">{progress}%</div>
-              <div className="text-sm text-stone-500 uppercase tracking-wider">Progression</div>
-            </div>
+          <div className="grid grid-cols-2 gap-8 mt-12 pt-12 border-t border-stone-200">
             <div>
               <div className="text-5xl font-light mb-2">{project._count.spaces}</div>
               <div className="text-sm text-stone-500 uppercase tracking-wider">Espaces</div>
@@ -165,7 +152,6 @@ export default async function ClientProjectDetailPage({ params }: PageProps) {
           ) : (
             project.spaces.map((space, spaceIndex) => (
               <div key={space.id} className="border-t border-stone-200 pt-12">
-                {/* Space Header */}
                 <div className="flex items-start gap-8 mb-12">
                   <div className="text-4xl font-light text-stone-300">
                     {String(spaceIndex + 1).padStart(2, '0')}
@@ -181,24 +167,12 @@ export default async function ClientProjectDetailPage({ params }: PageProps) {
                   </div>
                 </div>
 
-                {/* Prescriptions */}
                 {space.prescriptions.length === 0 ? (
                   <div className="pl-20 text-stone-400 italic">
                     Aucune sélection pour cet espace
                   </div>
                 ) : (
-                  <div className="grid md:grid-cols-2 gap-6 pl-0 md:pl-20">
-                    {space.prescriptions.map((prescription) => (
-                      <PrescriptionCard
-                        key={prescription.id}
-                        prescription={prescription}
-                        onUpdate={() => {
-                          // Force revalidation
-                          window.location.reload();
-                        }}
-                      />
-                    ))}
-                  </div>
+                  <PrescriptionsList prescriptions={space.prescriptions} />
                 )}
               </div>
             ))

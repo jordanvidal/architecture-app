@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
 
     const resources = await prisma.resourceLibrary.findMany({
       include: {
-        User: {
+        creator: {
           select: {
             id: true,
             firstName: true,
@@ -20,19 +20,10 @@ export async function GET(request: NextRequest) {
             email: true
           }
         },
-        category: true, // Garder l'ancienne relation pour compatibilité
-        subCategory2: {
-          include: {
-            subCategory1: {
-              include: {
-                parent: true
-              }
-            }
-          }
-        },
-        userFavorites: {
+        category: true,
+        user_favorites: {
           where: {
-            userId: session.user.id
+            user_id: session.user.id
           },
           select: {
             status: true,
@@ -43,20 +34,15 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' }
     });
 
-    // Transformer les données pour garder la compatibilité ET ajouter les nouvelles
     const transformedResources = resources.map(resource => ({
       ...resource,
-      // Pour compatibilité avec l'ancien code
-      isFavorite: resource.userFavorites.length > 0,
-      // Nouvelles données
+      isFavorite: resource.user_favorites.length > 0,
       addedBy: {
-        id: resource.User.id,
-        name: `${resource.User.firstName || ''} ${resource.User.lastName || ''}`.trim() || resource.User.email,
-        email: resource.User.email
+        id: resource.creator.id,
+        name: `${resource.creator.firstName || ''} ${resource.creator.lastName || ''}`.trim() || resource.creator.email,
+        email: resource.creator.email
       },
-      creator: resource.User, // Pour compatibilité
-      // Garder les userFavorites pour le nouveau système
-      userFavorites: resource.userFavorites
+      userFavorites: resource.user_favorites
     }));
 
     return NextResponse.json(transformedResources);
@@ -78,77 +64,36 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     
-    // Adapter les données pour accepter l'ancien ET le nouveau format
-    const resourceData: any = {
-      name: body.name,
-      description: body.description,
-      brand: body.brand,
-      reference: body.reference,
-      imageUrl: body.imageUrl,
-      mainImageUrl: body.mainImageUrl || body.imageUrl,
-      images: body.images || [],
-      productUrl: body.productUrl,
-      type: body.type,
-      categoryId: body.categoryId, // Garder pour compatibilité
-      subCategory2Id: body.subCategory2Id, // Nouveau
-      price: body.price ? parseFloat(body.price) : null,
-      priceMin: body.priceMin ? parseFloat(body.priceMin) : null,
-      priceMax: body.priceMax ? parseFloat(body.priceMax) : null,
-      pricePro: body.pricePro ? parseFloat(body.pricePro) : null,
-      supplier: body.supplier,
-      availability: body.availability,
-      countryOrigin: body.countryOrigin,
-      technicalSheet: body.technicalSheet,
-      tags: body.tags || [],
-      categoryPath: body.categoryPath || [],
-      createdBy: session.user.id,
-      isFavorite: body.isFavorite || false,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-
     const resource = await prisma.resourceLibrary.create({
-      data: resourceData,
+      data: {
+        name: body.name,
+        description: body.description,
+        brand: body.brand,
+        reference: body.reference,
+        imageUrl: body.imageUrl || body.mainImageUrl,
+        mainImageUrl: body.mainImageUrl || body.imageUrl,
+        images: body.images || [],
+        productUrl: body.productUrl,
+        type: body.type,
+        categoryId: body.categoryId,
+        price: body.price ? parseFloat(body.price) : null,
+        pricePro: body.pricePro ? parseFloat(body.pricePro) : null,
+        supplier: body.supplier,
+        tags: body.tags || [],
+        categoryPath: body.categoryPath || [],
+        createdBy: session.user.id,
+        isFavorite: body.isFavorite || false,
+      },
       include: {
-        User: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true
-          }
-        },
+        creator: true,
         category: true,
-        subCategory2: {
-          include: {
-            subCategory1: {
-              include: {
-                parent: true
-              }
-            }
-          }
-        }
       }
     });
 
-    // Transformer pour le format attendu
-    const transformedResource = {
-      ...resource,
-      addedBy: {
-        id: resource.User.id,
-        name: `${resource.User.firstName || ''} ${resource.User.lastName || ''}`.trim() || resource.User.email,
-        email: resource.User.email
-      },
-      creator: resource.User
-    };
-
-    return NextResponse.json(transformedResource);
+    return NextResponse.json(resource);
   } catch (error) {
-    console.error('Erreur lors de la création de la ressource:', error);
-    return NextResponse.json(
-      { error: 'Erreur lors de la création de la ressource' },
-      { status: 500 }
-    );
+    console.error('Erreur création ressource:', error);
+    return NextResponse.json({ error: 'Erreur création' }, { status: 500 });
   }
 }
 
@@ -160,95 +105,34 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const {
-      id,
-      name,
-      description,
-      brand,
-      reference,
-      imageUrl,
-      productUrl,
-      type,
-      subCategory2Id,
-      categoryId,
-      price,
-      pricePro,
-      supplier,
-      countryOrigin,
-      technicalSheet,
-      images,
-      mainImageUrl
-    } = body;
 
     const resource = await prisma.resourceLibrary.update({
-      where: { id },
+      where: { id: body.id },
       data: {
-        name,
-        description,
-        brand,
-        reference,
-        imageUrl: imageUrl || mainImageUrl,
-        mainImageUrl,
-        images: images || [],
-        productUrl,
-        type,
-        subCategory2Id,
-        categoryId,
-        price,
-        pricePro,
-        supplier,
-        countryOrigin,
-        technicalSheet,
-        updatedAt: new Date()
+        name: body.name,
+        description: body.description,
+        brand: body.brand,
+        reference: body.reference,
+        imageUrl: body.imageUrl || body.mainImageUrl,
+        mainImageUrl: body.mainImageUrl,
+        images: body.images || [],
+        productUrl: body.productUrl,
+        type: body.type,
+        categoryId: body.categoryId,
+        price: body.price ? parseFloat(body.price) : null,
+        pricePro: body.pricePro ? parseFloat(body.pricePro) : null,
+        supplier: body.supplier,
       },
       include: {
-        User: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true
-          }
-        },
+        creator: true,
         category: true,
-        subCategory2: {
-          include: {
-            subCategory1: {
-              include: {
-                parent: true
-              }
-            }
-          }
-        },
-        userFavorites: {
-          where: {
-            userId: session.user.id
-          },
-          select: {
-            status: true,
-            notes: true
-          }
-        }
       }
     });
 
-    const transformedResource = {
-      ...resource,
-      addedBy: {
-        id: resource.User.id,
-        name: `${resource.User.firstName || ''} ${resource.User.lastName || ''}`.trim() || resource.User.email,
-        email: resource.User.email
-      },
-      creator: resource.User
-    };
-
-    return NextResponse.json(transformedResource);
+    return NextResponse.json(resource);
   } catch (error) {
-    console.error('Erreur lors de la mise à jour de la ressource:', error);
-    return NextResponse.json(
-      { error: 'Erreur lors de la mise à jour de la ressource' },
-      { status: 500 }
-    );
+    console.error('Erreur update ressource:', error);
+    return NextResponse.json({ error: 'Erreur update' }, { status: 500 });
   }
 }
 
@@ -263,22 +147,13 @@ export async function DELETE(request: NextRequest) {
     const id = searchParams.get('id');
 
     if (!id) {
-      return NextResponse.json(
-        { error: 'ID de ressource manquant' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'ID manquant' }, { status: 400 });
     }
 
-    await prisma.resourceLibrary.delete({
-      where: { id }
-    });
-
+    await prisma.resourceLibrary.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Erreur lors de la suppression de la ressource:', error);
-    return NextResponse.json(
-      { error: 'Erreur lors de la suppression de la ressource' },
-      { status: 500 }
-    );
+    console.error('Erreur suppression:', error);
+    return NextResponse.json({ error: 'Erreur suppression' }, { status: 500 });
   }
 }

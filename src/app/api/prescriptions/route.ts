@@ -1,215 +1,87 @@
-// src/app/api/prescriptions/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import prisma from '@/lib/prisma';
 
-import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getPrisma } from '@/lib/get-prisma'
-import { writeFile, mkdir } from 'fs/promises'
-import path from 'path'
-import { v4 as uuidv4 } from 'uuid'
-
-// Configuration de l'upload
-const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
-const ALLOWED_FILE_TYPES = [
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'image/png',
-  'image/jpeg',
-  'image/jpg'
-]
-
-// POST - Créer une nouvelle prescription avec documents
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(authOptions);
+
     if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
-    const user = await prisma.User.findUnique({
+    const user = await prisma.user.findUnique({
       where: { email: session.user.email }
-    })
+    });
 
     if (!user) {
-      return NextResponse.json({ error: 'Utilisateur non trouvé' }, { status: 404 })
+      return NextResponse.json({ error: 'Utilisateur non trouvé' }, { status: 404 });
     }
 
-    // Récupérer les données du formulaire
-    const formData = await request.formData()
-    const prescriptionDataString = formData.get('prescriptionData') as string
-    const prescriptionData = JSON.parse(prescriptionDataString)
+    // Gérer FormData (multipart)
+    const formData = await request.formData();
+    const prescriptionDataStr = formData.get('prescriptionData') as string;
     
-    const {
-      name,
-      description,
-      quantity,
-      unitPrice,
-      totalPrice,
-      status,
-      projectId,
-      spaceId,
-      categoryId,
-      brand,
-      reference,
-      supplier,
-      productUrl,
-      notes,
-      saveToLibrary
-    } = prescriptionData
+    if (!prescriptionDataStr) {
+      return NextResponse.json({ error: 'Données manquantes' }, { status: 400 });
+    }
 
-    // Validation
-    if (!name || !projectId || !categoryId) {
+    const body = JSON.parse(prescriptionDataStr);
+    const { projectId, spaceId, categoryId, name, description, brand, reference, supplier, unitPrice, quantity, productUrl, notes } = body;
+
+    if (!projectId || !name) {
       return NextResponse.json(
-        { error: 'Données manquantes' },
+        { error: 'Les champs projectId et name sont requis' },
         { status: 400 }
-      )
+      );
     }
 
-    // Vérifier que le projet appartient bien à l'utilisateur
-    const project = await prisma.project.findFirst({
-      where: {
-        id: projectId,
-        created_by: user.id
-      }
-    })
-
-    if (!project) {
+    if (!categoryId) {
       return NextResponse.json(
-        { error: 'Projet non trouvé' },
-        { status: 404 }
-      )
+        { error: 'La catégorie est requise' },
+        { status: 400 }
+      );
     }
 
-    // Créer la prescription
-    const prescription = await prisma.prescriptions.create({
+    // Validation et nettoyage des champs numériques
+    const cleanUnitPrice = unitPrice && unitPrice !== '' && unitPrice !== '-' ? parseFloat(unitPrice) : null;
+    const cleanQuantity = quantity && quantity !== '' && quantity !== '-' ? parseInt(quantity) : 1;
+    const cleanTotalPrice = cleanUnitPrice && cleanQuantity ? cleanUnitPrice * cleanQuantity : null;
+
+    const prescription = await prisma.prescription.create({
       data: {
-        name,
-        description,
-        quantity: quantity || 1,
-        unitPrice: unitPrice || 0,
-        totalPrice: totalPrice || 0,
-        status: status || 'EN_COURS',
         projectId,
-        spaceId,
+        spaceId: spaceId || null,
         categoryId,
-        brand,
-        reference,
-        supplier,
-        productUrl,
-        notes,
-        created_by: user.id
+        name,
+        description: description || null,
+        brand: brand || null,
+        reference: reference || null,
+        supplier: supplier || null,
+        unitPrice: cleanUnitPrice,
+        quantity: cleanQuantity,
+        totalPrice: cleanTotalPrice,
+        productUrl: productUrl || null,
+        notes: notes || null,
+        status: 'EN_COURS',
+        createdBy: user.id,
       },
       include: {
-        space: true,
         category: true,
-        creator: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true
-          }
-        }
-      }
-    })
+        space: true,
+      },
+    });
 
-    // Gérer l'upload des fichiers
-    const files = formData.getAll('files') as File[]
-    const uploadedDocuments = []
+    // TODO: Gérer l'upload des fichiers si besoin
+    // const files = formData.getAll('files');
 
-    if (files.length > 0) {
-      // Créer le dossier d'upload s'il n'existe pas
-      const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'prescriptions', prescription.id)
-      await mkdir(uploadDir, { recursive: true })
-
-      for (const file of files) {
-        // Vérifier le type de fichier
-        if (!ALLOWED_FILE_TYPES.includes(file.type)) {
-          console.error(`Type de fichier non autorisé: ${file.type}`)
-          continue
-        }
-
-        // Vérifier la taille du fichier
-        if (file.size > MAX_FILE_SIZE) {
-          console.error(`Fichier trop volumineux: ${file.name}`)
-          continue
-        }
-
-        // Générer un nom unique pour le fichier
-        const fileExtension = path.extname(file.name)
-        const fileName = `${uuidv4()}${fileExtension}`
-        const filePath = path.join(uploadDir, fileName)
-        
-        // Sauvegarder le fichier
-        const bytes = await file.arrayBuffer()
-        const buffer = Buffer.from(bytes)
-        await writeFile(filePath, buffer)
-
-        // Créer l'entrée dans la base de données
-        const document = await prisma.prescriptionsDocument.create({
-          data: {
-            name: file.name,
-            originalName: file.name,
-            type: 'OTHER' as any, // À adapter selon votre enum FileType
-            mimeType: file.type,
-            size: file.size,
-            url: `/uploads/prescriptions/${prescription.id}/${fileName}`,
-            prescriptionId: prescription.id,
-            uploadedBy: user.id
-          }
-        })
-
-        uploadedDocuments.push(document)
-      }
-    }
-
-    // Si demandé, ajouter à la bibliothèque
-    if (saveToLibrary) {
-      await prisma.resource_library.create({
-        data: {
-          name,
-          description,
-          categoryId,
-          brand,
-          reference,
-          productUrl,
-          priceMin: unitPrice,
-          priceMax: unitPrice,
-          price: unitPrice,
-          supplier,
-          created_by: user.id,
-          categoryPath: []
-        }
-      })
-    }
-
-    // Mettre à jour le budget dépensé du projet
-    if (totalPrice > 0) {
-      await prisma.project.update({
-        where: { id: projectId },
-        data: {
-          budget_spent: {
-            increment: totalPrice
-          }
-        }
-      })
-    }
-
-    // Retourner la prescription avec les documents
-    const prescriptionWithDocuments = {
-      ...prescription,
-      documents: uploadedDocuments
-    }
-
-    return NextResponse.json(prescriptionWithDocuments)
+    return NextResponse.json(prescription, { status: 201 });
   } catch (error) {
-    console.error('Erreur création prescription:', error)
+    console.error('Erreur lors de la création de la prescription:', error);
     return NextResponse.json(
-      { error: 'Erreur lors de la création de la prescription' },
+      { error: 'Erreur lors de la création de la prescription', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
-    )
+    );
   }
 }
