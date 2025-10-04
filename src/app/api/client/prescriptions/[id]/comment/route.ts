@@ -1,119 +1,70 @@
-// app/api/client/prescriptions/[id]/comment/route.ts
-
-import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import prisma from '@/lib/prisma'
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import prisma from '@/lib/prisma';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
+    const session = await getServerSession(authOptions);
+
+    if (!session || session.user.role !== 'CLIENT') {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    })
+    const body = await request.json();
+    const { comment } = body;
 
-    if (!user) {
-      return NextResponse.json({ error: 'Utilisateur non trouvé' }, { status: 404 })
+    if (!comment || comment.trim() === '') {
+      return NextResponse.json({ error: 'Le commentaire est requis' }, { status: 400 });
     }
 
-    const prescriptionId = params.id
-    const body = await request.json()
-    const { content } = body
-
-    if (!content || !content.trim()) {
-      return NextResponse.json({ error: 'Le commentaire ne peut pas être vide' }, { status: 400 })
-    }
-
-    // Vérifier que la prescription existe
+    // Vérifier que la prescription existe et que le client a accès au projet
     const prescription = await prisma.prescription.findUnique({
-      where: { id: prescriptionId },
+      where: { id: params.id },
       include: {
         project: {
           include: {
-            clientAccess: user.role === 'CLIENT' ? {
-              where: { userId: user.id }
-            } : undefined
-          }
-        }
-      }
-    })
+            clientAccess: {
+              where: {
+                userId: session.user.id,
+              },
+            },
+          },
+        },
+      },
+    });
 
-    if (!prescription) {
-      return NextResponse.json({ error: 'Prescription non trouvée' }, { status: 404 })
-    }
-
-    // Vérifier les permissions
-    if (user.role === 'CLIENT' && prescription.project.clientAccess?.length === 0) {
-      return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 })
-    }
-
-    if (user.role === 'ARCHITECT' && prescription.project.created_by !== user.id) {
-      return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 })
+    if (!prescription || prescription.project.clientAccess.length === 0) {
+      return NextResponse.json({ error: 'Prescription non trouvée' }, { status: 404 });
     }
 
     // Créer le commentaire
-    const comment = await prisma.prescriptionComment.create({
+    const newComment = await prisma.prescriptionComment.create({
       data: {
-        prescriptionId,
-        userId: user.id,
-        content: content.trim()
+        prescriptionId: params.id,
+        userId: session.user.id,
+        comment: comment.trim(),
       },
       include: {
         user: {
           select: {
-            id: true,
             firstName: true,
             lastName: true,
-            role: true
-          }
-        }
-      }
-    })
+            email: true,
+          },
+        },
+      },
+    });
 
-    // Notifier la partie opposée (architecte si client commente, ou client si architecte commente)
-    let receiverId: string | null = null
-
-    if (user.role === 'CLIENT') {
-      // Notifier l'architecte
-      receiverId = prescription.project.created_by
-    } else if (user.role === 'ARCHITECT') {
-      // Notifier le client (prendre le premier client ayant accès)
-      const clientAccess = await prisma.projectClient.findFirst({
-        where: { projectId: prescription.projectId }
-      })
-      receiverId = clientAccess?.userId || null
-    }
-
-    if (receiverId && receiverId !== user.id) {
-      await prisma.notification.create({
-        data: {
-          type: 'PRESCRIPTION_COMMENTED',
-          senderId: user.id,
-          receiverId,
-          content: `${user.firstName || user.email} a commenté la prescription "${prescription.name}"`,
-          metadata: {
-            prescriptionId: prescription.id,
-            projectId: prescription.projectId,
-            projectName: prescription.project.name,
-            commentContent: content.trim().substring(0, 100)
-          }
-        }
-      })
-    }
-
-    return NextResponse.json({ comment })
+    return NextResponse.json(newComment);
   } catch (error) {
-    console.error('Erreur création commentaire:', error)
+    console.error('Erreur lors de l\'ajout du commentaire:', error);
     return NextResponse.json(
-      { error: 'Erreur lors de la création du commentaire' },
+      { error: 'Erreur lors de l\'ajout du commentaire' },
       { status: 500 }
-    )
+    );
   }
 }
